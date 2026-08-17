@@ -1,14 +1,31 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
 
-# Создаём приложение
+from app.core.config import settings
+from app.core.redis import init_redis, close_redis
+from app.db.base import engine
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan-контекст."""
+    # Startup
+    await init_redis()
+
+    yield
+
+    # Shutdown
+    await close_redis()
+    await engine.dispose()
+
+
 app = FastAPI(
-    title="Kanbanchik API",
-    description="Сервис для управления проектами и задачами",
+    title=settings.app_name,
     version="0.1.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    lifespan=lifespan,
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
 )
 
 app.add_middleware(
@@ -22,7 +39,6 @@ app.add_middleware(
 
 @app.get("/")
 async def root() -> dict:
-    """Корневой эндпоинт."""
     return {
         "message": "Kanbanchik API",
         "version": "0.1.0",
@@ -32,7 +48,6 @@ async def root() -> dict:
 
 @app.get("/health")
 async def health() -> dict:
-    """Проверка работоспособности."""
     return {
         "status": "healthy",
         "service": "kanbanchik-backend",
@@ -41,11 +56,12 @@ async def health() -> dict:
 
 @app.get("/ping")
 async def ping() -> dict:
-    """Простой ping."""
     return {"pong": True}
 
 
 if __name__ == "__main__":
+    import uvicorn
+
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
