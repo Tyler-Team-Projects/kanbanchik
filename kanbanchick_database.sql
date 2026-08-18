@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS citext;
 
 -- 1. USERS
 CREATE TABLE "users" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" uuid PRIMARY KEY DEFAULT uuidv7(),
   "email" citext UNIQUE NOT NULL,
   "username" citext UNIQUE NOT NULL,
   "password_hash" text NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE "users" (
 
 -- 2. WORKSPACES
 CREATE TABLE "workspaces" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" uuid PRIMARY KEY DEFAULT uuidv7(),
   "owner_id" uuid NOT NULL,
   "name" text NOT NULL,
   "description" text,
@@ -41,7 +41,7 @@ CREATE TABLE "workspace_members" (
 
 -- 4. BOARDS
 CREATE TABLE "boards" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" uuid PRIMARY KEY DEFAULT uuidv7(),
   "workspace_id" uuid NOT NULL,
   "name" text NOT NULL,
   "description" text,
@@ -55,7 +55,7 @@ CREATE TABLE "boards" (
 
 -- 5. LISTS (колонки)
 CREATE TABLE "lists" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" uuid PRIMARY KEY DEFAULT uuidv7(),
   "board_id" uuid NOT NULL,
   "name" text NOT NULL,
   "position" numeric(30,15) NOT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE "lists" (
 
 -- 6. CARDS
 CREATE TABLE "cards" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" uuid PRIMARY KEY DEFAULT uuidv7(),
   "list_id" uuid NOT NULL,
   "board_id" uuid NOT NULL,
   "title" text NOT NULL,
@@ -85,7 +85,7 @@ CREATE TABLE "cards" (
 
 -- 7. LABELS
 CREATE TABLE "labels" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" uuid PRIMARY KEY DEFAULT uuidv7(),
   "board_id" uuid NOT NULL,
   "name" text NOT NULL,
   "color" text NOT NULL,
@@ -111,7 +111,7 @@ CREATE TABLE "card_members" (
 
 -- 10. CHECKLISTS
 CREATE TABLE "checklists" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" uuid PRIMARY KEY DEFAULT uuidv7(),
   "card_id" uuid NOT NULL,
   "title" text NOT NULL,
   "position" integer NOT NULL,
@@ -121,7 +121,7 @@ CREATE TABLE "checklists" (
 
 -- 11. CHECKLIST ITEMS
 CREATE TABLE "checklist_items" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" uuid PRIMARY KEY DEFAULT uuidv7(),
   "checklist_id" uuid NOT NULL,
   "title" text NOT NULL,
   "is_completed" boolean DEFAULT false,
@@ -131,7 +131,7 @@ CREATE TABLE "checklist_items" (
 
 -- 12. COMMENTS
 CREATE TABLE "comments" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" uuid PRIMARY KEY DEFAULT uuidv7(),
   "card_id" uuid NOT NULL,
   "author_id" uuid NOT NULL,
   "content" text NOT NULL,
@@ -141,7 +141,7 @@ CREATE TABLE "comments" (
 
 -- 13. ACTIVITIES (audit log)
 CREATE TABLE "activities" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" uuid PRIMARY KEY DEFAULT uuidv7(),
   "board_id" uuid NOT NULL,
   "user_id" uuid,
   "action" varchar(50) NOT NULL,
@@ -153,7 +153,7 @@ CREATE TABLE "activities" (
 
 -- 14. NOTIFICATIONS
 CREATE TABLE "notifications" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" uuid PRIMARY KEY DEFAULT uuidv7(),
   "user_id" uuid NOT NULL,
   "type" varchar(50) NOT NULL,
   "title" text NOT NULL,
