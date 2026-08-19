@@ -1,3 +1,4 @@
+import uuid
 from uuid_extension import uuid7
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column

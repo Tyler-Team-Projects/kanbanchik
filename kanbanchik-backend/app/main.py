@@ -39,9 +39,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api_v1_router, prefix="/api/v1")
 # Интеграция Dishka
 setup_dishka(container, app)
+
+app.include_router(api_v1_router, prefix="/api/v1")
 
 
 @app.get("/")

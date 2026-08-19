@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # App
     app_name: str = "Kanbanchik"
-    debug: bool = False
+    debug: bool = True
     secret_key: str
     api_v1_prefix: str = "/api/v1"
 
@@ -25,5 +25,7 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
+    # Логи совершения миграций, на будущее
+    config_file_name: str = "alembic.logs"
 
 settings = Settings()
