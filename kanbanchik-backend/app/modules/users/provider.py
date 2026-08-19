@@ -10,10 +10,7 @@ class UsersProvider(Provider):
     @provide(scope=Scope.REQUEST, provides=IUserService)
     async def get_user_service(self, repo: IUserRepository) -> IUserService:
         return UserService(repo)
+
     @provide(scope=Scope.REQUEST)
     async def get_user_repo(self, session: AsyncSession) -> IUserRepository:
         return UserRepository(session)
-
-    @provide(scope=Scope.REQUEST)
-    async def get_user_service(self, repo: IUserRepository) -> IUserService:
-        return UserService(repo)
