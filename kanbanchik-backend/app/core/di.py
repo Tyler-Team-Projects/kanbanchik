@@ -5,6 +5,7 @@ from typing import AsyncIterable
 from app.db.base import engine
 from app.core.config import settings, Settings
 from app.modules.users.provider import UsersProvider
+from app.modules.boards.provider import BoardsProvider
 
 
 class CoreProvider(Provider):
@@ -42,4 +43,5 @@ container = make_async_container(
     CoreProvider(),
     DatabaseProvider(),
     UsersProvider(),
+    BoardsProvider(),
 )
