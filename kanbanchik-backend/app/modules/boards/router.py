@@ -68,6 +68,16 @@ async def get_archived_boards(
     boards = await service.get_archived(skip, limit)
     return [BoardResponse.model_validate(b) for b in boards]
 
+@router.get("/get_all_boards", response_model=list[BoardResponse])
+@inject
+async def get_all_boards(
+    workspace_id: UUID | None = Query(None, description="Фильтр по workspace (опционально)"),
+    skip: int = Query(0, ge=0, description="Сколько записей пропустить"),
+    limit: int = Query(100, ge=1, le=1000, description="Сколько записей вернуть"),
+    service: FromDishka[IBoardService] = None,
+):
+    boards = await service.get_all(workspace_id, skip, limit)
+    return [BoardResponse.model_validate(b) for b in boards]
 
 @router.patch("/update", response_model=BoardResponse)
 @inject
