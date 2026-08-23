@@ -1,5 +1,4 @@
 from fastapi import APIRouter
-
 from app.modules.users.router import router as users_router
 from app.modules.boards.router import router as boards_router
 
