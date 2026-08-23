@@ -11,7 +11,7 @@ class IBoardRepository(Protocol):
     async def get_by_id(self, board_id: UUID) -> Board | None: ...
     async def get_by_workspace(self, workspace_id: UUID, skip: int = 0, limit: int = 100) -> list[Board]: ...
     async def get_all_active(self, skip: int = 0, limit: int = 100) -> list[Board]: ...
-    async def get_all(self, workspace_id: UUID | None = None, skip: int = 0, limit: int = 100) -> list[Board]: ...
+    async def get_all(self, skip: int = 0, limit: int = 100) -> list[Board]: ...
     async def get_archived(self, skip: int = 0, limit: int = 100) -> list[Board]: ...
     async def create(self, board: Board) -> Board: ...
     async def update(self, board: Board) -> Board: ...
@@ -58,17 +58,9 @@ class BoardRepository:
         result = await self._session.execute(query)
         return result.scalars().all()
 
-    async def get_all(
-            self,
-            workspace_id: UUID | None = None,
-            skip: int = 0,
-            limit: int = 100,
-    ) -> list[Board]:
+    async def get_all(self, skip: int = 0, limit: int = 100) -> list[Board]:
         """Получить все доски (без фильтрации по is_archived)."""
-        query = select(Board)
-        if workspace_id:
-            query = query.where(Board.workspace_id == workspace_id)
-        query = query.order_by(Board.created_at.desc()).offset(skip).limit(limit)
+        query = select(Board).order_by(Board.created_at.desc()).offset(skip).limit(limit)
         result = await self._session.execute(query)
         return result.scalars().all()
 
