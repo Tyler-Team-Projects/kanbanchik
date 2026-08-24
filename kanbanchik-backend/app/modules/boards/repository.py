@@ -16,6 +16,8 @@ class IBoardRepository(Protocol):
     async def get_archived(self, skip: int = 0, limit: int = 100) -> list[Board]: ...
     async def create(self, board: Board) -> Board: ...
     async def update(self, board: Board) -> Board: ...
+    async def archive(self, board_id: UUID) -> Board | None: ...
+    async def restore(self, board_id: UUID) -> Board | None: ...
     async def delete(self, board_id: UUID) -> None: ...
 
 
@@ -86,6 +88,22 @@ class BoardRepository:
         await self._session.commit()
         await self._session.refresh(board)
         return board
+
+    async def archive(self, board_id: UUID) -> Board | None:
+        """Архивировать доску (is_archived=True)."""
+        board = await self.get_by_id(board_id)
+        if board:
+            board.is_archived = True
+            return await self.update(board)
+        return None
+
+    async def restore(self, board_id: UUID) -> Board | None:
+        """Восстановить доску из архива (is_archived=False)."""
+        board = await self.get_by_id(board_id)
+        if board:
+            board.is_archived = False
+            return await self.update(board)
+        return None
 
     async def delete(self, board_id: UUID) -> None:
         await self._session.execute(

@@ -91,6 +91,31 @@ async def update_board(
         raise HTTPException(status_code=400, detail=str(e))
     return BoardResponse.model_validate(board)
 
+@router.patch("/archive", response_model=BoardResponse)
+@inject
+async def archive_board(
+    board_id: UUID,
+    service: FromDishka[IBoardService] = None,
+):
+    """Архивировать доску (мягкое удаление)."""
+    try:
+        board = await service.archive(board_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return BoardResponse.model_validate(board)
+
+@router.patch("/restore", response_model=BoardResponse)
+@inject
+async def restore_board(
+    board_id: UUID,
+    service: FromDishka[IBoardService] = None,
+):
+    """Восстановить доску из архива."""
+    try:
+        board = await service.restore(board_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return BoardResponse.model_validate(board)
 
 @router.delete("/delete", status_code=204)
 @inject

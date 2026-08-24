@@ -14,6 +14,8 @@ class IBoardService(Protocol):
     async def get_all(self, skip: int = 0, limit: int = 100) -> list[Board]: ...
     async def get_archived(self, skip: int = 0, limit: int = 100) -> list[Board]: ...
     async def update(self, board_id: UUID, data: BoardUpdate) -> Board: ...
+    async def archive(self, board_id: UUID) -> Board: ...
+    async def restore(self, board_id: UUID) -> Board: ...
     async def delete(self, board_id: UUID) -> None: ...
 
 class BoardService:
@@ -62,6 +64,24 @@ class BoardService:
             board.is_archived = data.is_archived
 
         return await self._repo.update(board)
+
+    async def archive(self, board_id: UUID) -> Board:
+        """Архивировать доску."""
+        board = await self._repo.archive(board_id)
+        if not board:
+            raise ValueError("Доска не найдена")
+        if board.is_archived:
+            raise ValueError("Доска уже в архиве")
+        return board
+
+    async def restore(self, board_id: UUID) -> Board:
+        """Восстановить доску из архива."""
+        board = await self._repo.restore(board_id)
+        if not board:
+            raise ValueError("Доска не найдена")
+        if not board.is_archived:
+            raise ValueError("Доска не в архиве")
+        return board
 
     async def delete(self, board_id: UUID) -> None:
         board = await self._repo.get_by_id(board_id)
