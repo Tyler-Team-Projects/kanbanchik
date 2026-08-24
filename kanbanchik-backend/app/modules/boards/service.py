@@ -16,7 +16,6 @@ class IBoardService(Protocol):
     async def update(self, board_id: UUID, data: BoardUpdate) -> Board: ...
     async def delete(self, board_id: UUID) -> None: ...
 
-
 class BoardService:
     def __init__(self, repo: IBoardRepository):
         self._repo = repo

@@ -1,9 +1,7 @@
-import uuid
 from uuid import UUID
 from datetime import datetime
-from typing import Optional, List
 
-from sqlalchemy import String, Text, Boolean, DateTime, func
+from sqlalchemy import String, Text, Boolean, DateTime, func, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from uuid_extension import uuid7
@@ -14,7 +12,11 @@ class Board(Base):
     __tablename__ = "boards"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid7)
-    workspace_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
+    workspace_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     background_color: Mapped[str | None] = mapped_column(String, nullable=True)
