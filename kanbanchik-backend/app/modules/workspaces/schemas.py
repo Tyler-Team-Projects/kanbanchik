@@ -15,7 +15,6 @@ class WorkspaceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=150)
     description: str | None = Field(None, max_length=500)
     color: str | None = Field(None, pattern=r"^#[0-9a-fA-F]{6}$")
-    is_archived: bool | None = None
 
 
 class WorkspaceUpdate(BaseModel):
