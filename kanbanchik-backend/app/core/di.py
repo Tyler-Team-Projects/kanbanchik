@@ -6,6 +6,7 @@ from app.db.base import engine
 from app.core.config import settings, Settings
 from app.modules.users.provider import UsersProvider
 from app.modules.boards.provider import BoardsProvider
+from app.modules.workspaces.provider import WorkspacesProvider
 
 
 class CoreProvider(Provider):
@@ -44,4 +45,5 @@ container = make_async_container(
     DatabaseProvider(),
     UsersProvider(),
     BoardsProvider(),
+    WorkspacesProvider(),
 )

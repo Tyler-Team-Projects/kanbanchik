@@ -10,6 +10,7 @@ from app.db.base import Base
 # Импортируем модели, чтобы они зарегистрировались в Base.metadata
 from app.modules.users.models import User
 from app.modules.boards.models import Board
+from app.modules.workspaces.models import Workspace
 
 config = context.config
 
