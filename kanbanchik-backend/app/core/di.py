@@ -1,9 +1,12 @@
 from dishka import Provider, Scope, provide, make_async_container
+from dishka.integrations.fastapi import FastapiProvider
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from typing import AsyncIterable
 
 from app.db.base import engine
+from app.core.redis import RedisProvider
 from app.core.config import settings, Settings
+from app.modules.auth.provider import AuthProvider
 from app.modules.users.provider import UsersProvider
 from app.modules.workspaces.provider import WorkspacesProvider
 
@@ -42,6 +45,9 @@ class DatabaseProvider(Provider):
 container = make_async_container(
     CoreProvider(),
     DatabaseProvider(),
+    RedisProvider(),
+    FastapiProvider(),
     UsersProvider(),
     WorkspacesProvider(),
+    AuthProvider(),
 )

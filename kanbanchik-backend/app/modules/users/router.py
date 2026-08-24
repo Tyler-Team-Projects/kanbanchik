@@ -1,4 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
+from app.api.deps import get_current_user
+from app.api.schemas import CurrentUser
+
 from dishka.integrations.fastapi import FromDishka, inject
 from uuid import UUID
 
@@ -21,22 +24,15 @@ async def register(
     return UserResponse.model_validate(user)
 
 
-@router.get("/get_me", response_model=UserResponse)
-@inject
+@router.get("/me", response_model=UserResponse)
 async def get_me(
-    service: FromDishka[IUserService] = None,
-    # TODO: заменить на реального пользователя из токена
-    current_user_id: UUID = UUID("00000000-0000-0000-0000-000000000000"),  # временная заглушка
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    user = await service.get_by_id(current_user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-    return UserResponse.model_validate(user)
-
+    return UserResponse.model_validate(current_user)
 
 @router.get("/user_id", response_model=UserResponse)
 @inject
-async def get_user(
+async def get_user_by_id(
     user_id: UUID,
     service: FromDishka[IUserService] = None,
 ):
@@ -47,7 +43,7 @@ async def get_user(
 
 @router.get("/user_username", response_model=UserResponse)
 @inject
-async def get_user(
+async def get_user_by_username(
     username: str,
     service: FromDishka[IUserService] = None,
 ):

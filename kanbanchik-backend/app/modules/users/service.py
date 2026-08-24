@@ -6,7 +6,7 @@ from app.modules.users.models import User
 from app.modules.users.schemas import UserCreate, UserUpdate
 from app.modules.users.repository import IUserRepository
 
-_hasher = PasswordHasher()
+from app.core.security import get_password_hash
 
 
 class IUserService(Protocol):
@@ -32,7 +32,7 @@ class UserService:
         if existing_username:
             raise ValueError("Данный username уже зарегистрирован")
 
-        hashed = _hasher.hash(data.password)
+        hashed = get_password_hash(data.password)
         user = User(
             email=str(data.email),
             username=data.username,

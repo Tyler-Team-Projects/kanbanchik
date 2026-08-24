@@ -35,6 +35,7 @@ Pygments==2.21.0
 pytest==9.1.1
 pytest-asyncio==1.4.0
 python-dotenv==1.2.2
+python-jose[cryptography]>=3.3.0
 PyYAML==6.0.3
 redis==8.1.0
 SQLAlchemy==2.0.52
