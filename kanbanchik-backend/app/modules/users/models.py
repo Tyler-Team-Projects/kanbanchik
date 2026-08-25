@@ -28,13 +28,13 @@ class User(Base):
 
     # Связи таблиц
     # Владеделец пространсва
-    # owned_workspaces: Mapped[list["Workspace"]] = relationship(
-    #     "Workspace", back_populates = "owner", lazy = "raise", foreign_key="Workspace.owner_id"
-    # )
-    # # Участник пространств (через промежуточную таблицу)
-    # workspace_memberships: Mapped[list["WorkspaceMember"]] = relationship(
-    #     "WorkspaceMember", back_populates="user", lazy="raise"
-    # )
+    owned_workspaces: Mapped[list["Workspace"]] = relationship(
+        "Workspace", back_populates = "owner", lazy = "raise", foreign_keys="Workspace.owner_id"
+    )
+    # Участник пространств (через промежуточную таблицу)
+    workspace_memberships: Mapped[list["WorkspaceMember"]] = relationship(
+        "WorkspaceMember", back_populates="user", lazy="raise"
+    )
     # # Карточки, назначенные пользователю
     # assigned_cards: Mapped[list["Card"]] = relationship(
     #     "Card", back_populates="assignee", lazy="raise", foreign_keys="Card.assignee_id"
