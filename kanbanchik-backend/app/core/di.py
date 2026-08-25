@@ -7,6 +7,7 @@ from app.core.config import settings, Settings
 from app.modules.users.provider import UsersProvider
 from app.modules.boards.provider import BoardsProvider
 from app.modules.workspaces.provider import WorkspacesProvider
+from app.modules.lists.provider import ListsProvider
 
 
 class CoreProvider(Provider):
@@ -46,4 +47,5 @@ container = make_async_container(
     UsersProvider(),
     BoardsProvider(),
     WorkspacesProvider(),
+    ListsProvider(),
 )

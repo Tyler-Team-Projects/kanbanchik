@@ -11,6 +11,7 @@ from app.db.base import Base
 from app.modules.users.models import User
 from app.modules.boards.models import Board
 from app.modules.workspaces.models import Workspace
+from app.modules.lists.models import List
 
 config = context.config
 
