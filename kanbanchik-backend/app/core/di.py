@@ -8,6 +8,7 @@ from app.core.redis import RedisProvider
 from app.core.config import settings, Settings
 from app.modules.auth.provider import AuthProvider
 from app.modules.users.provider import UsersProvider
+from app.modules.boards.provider import BoardsProvider
 from app.modules.workspaces.provider import WorkspacesProvider
 
 
@@ -41,7 +42,7 @@ class DatabaseProvider(Provider):
             yield session
 
 
-# Собираем ВСЕ провайдеры в один контейнер
+# Собираем провайдеры в один контейнер
 container = make_async_container(
     CoreProvider(),
     DatabaseProvider(),
@@ -50,4 +51,5 @@ container = make_async_container(
     UsersProvider(),
     WorkspacesProvider(),
     AuthProvider(),
+    BoardsProvider(),
 )
