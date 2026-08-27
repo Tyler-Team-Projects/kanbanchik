@@ -48,4 +48,19 @@ class UserResponse(BaseModel):
     updated_at: datetime
 
 
+class ChangePassword(BaseModel):
+    old_password: str
+    new_password: str = Field(min_lingth=8)
 
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str) -> str:
+        if not re.search(r"[a-z]", value):
+            raise ValueError("Пароль должен содержать как минимум 1 строчную букву")
+        if not re.search(r"[A-Z]", value):
+            raise ValueError("Пароль должен содержать как минимум 1 заглавную букву")
+        if not re.search(r"\d", value):
+            raise ValueError("Пароль должен содержать как минимум 1 цифру")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', value):
+            raise ValueError("Пароль должен содержать как минимум 1 специальный символ")
+        return value

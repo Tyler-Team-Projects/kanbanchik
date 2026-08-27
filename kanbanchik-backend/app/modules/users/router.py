@@ -5,7 +5,7 @@ from app.api.schemas import CurrentUser
 from dishka.integrations.fastapi import FromDishka, inject
 from uuid import UUID
 
-from app.modules.users.schemas import UserCreate, UserUpdate, UserResponse
+from app.modules.users.schemas import UserCreate, UserUpdate, UserResponse, ChangePassword
 from app.modules.users.service import IUserService
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -21,6 +21,20 @@ async def register(
         user = await service.register(data)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
+    return UserResponse.model_validate(user)
+
+
+@router.post("/me/change-password", response_model=UserResponse)
+@inject
+async def change_password(
+    data: ChangePassword,
+    service: FromDishka[IUserService] = None,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    try:
+        user = await service.change_password(current_user.id, data.old_password, data.new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
     return UserResponse.model_validate(user)
 
 

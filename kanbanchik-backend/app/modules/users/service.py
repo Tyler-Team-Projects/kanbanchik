@@ -6,11 +6,12 @@ from app.modules.users.models import User
 from app.modules.users.schemas import UserCreate, UserUpdate
 from app.modules.users.repository import IUserRepository
 
-from app.core.security import get_password_hash
+from app.core.security import verify_password, get_password_hash
 
 
 class IUserService(Protocol):
     async def register(self, data: UserCreate) -> User: ...
+    async def change_password(self, user_id: UUID, old_password: str, new_password: str) -> User: ...
     async def get_by_id(self, user_id: UUID) -> User | None: ...
     async def get_by_email(self, email: str) -> User | None: ...
     async def get_by_username(self, username: str) -> User | None: ...
@@ -87,3 +88,14 @@ class UserService:
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> list[User]:
         return await self._repo.get_all(skip, limit)
+
+    async def change_password(self, user_id: UUID, old_password: str, new_password: str) -> User:
+        user = await self._repo.get_by_id(user_id)
+        if not user:
+            raise ValueError("Пользователь не найден")
+
+        if not verify_password(old_password, user.password_hash):
+            raise ValueError("Неверный пароль")
+
+        user.password_hash = get_password_hash(new_password)
+        return await self._repo.update(user)
