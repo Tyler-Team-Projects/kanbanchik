@@ -45,12 +45,12 @@ class AuthService:
         self._refresh_repo = refresh_repo
         self._settings = settings
 
-    async def login(self, email: str, password: str) -> dict[str, str]:
-        user = await self._user_repo.get_by_email(email)
+    async def login(self, email_or_username: str, password: str) -> tuple[str, str]:
+        user = await self._user_repo.get_by_email_or_username(email_or_username)
         if not user:
-            raise ValueError("Неверная почта или пароль")
+            raise ValueError("Неверная почта, username или пароль")
         if not verify_password(password, user.password_hash):
-            raise ValueError("Неверная почта или пароль")
+            raise ValueError("Неверная почта, username или пароль")
 
         # Генерируем jti для refresh-токена
         jti = str(uuid7())

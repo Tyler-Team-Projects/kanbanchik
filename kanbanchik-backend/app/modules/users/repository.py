@@ -32,6 +32,12 @@ class UserRepository:
         result = await self._session.execute(select(User).where(User.username == username))
         return result.scalar_one_or_none()
 
+    async def get_by_email_or_username(self, value: str) -> User | None:
+        result = await self._session.execute(
+            select(User).where((User.email == value) | (User.username == value))
+        )
+        return result.scalar_one_or_none()
+
     async def get_all(self, skip: int = 0, limit: int = 100) -> list[User]:
         result = await self._session.execute(
             select(User).offset(skip).limit(limit).order_by(User.created_at)
