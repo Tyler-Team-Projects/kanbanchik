@@ -20,7 +20,7 @@ async def register(
     try:
         user = await service.register(data)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e))
     return UserResponse.model_validate(user)
 
 
@@ -58,10 +58,10 @@ async def get_user_by_username(
 async def update_me(
     data: UserUpdate,
     service: FromDishka[IUserService] = None,
-    current_user_id: UUID = UUID("00000000-0000-0000-0000-000000000000"),  # заглушка
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     try:
-        user = await service.update_profile(current_user_id, data)
+        user = await service.update_profile(current_user.id, data)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return UserResponse.model_validate(user)
@@ -71,10 +71,10 @@ async def update_me(
 @inject
 async def deactivate_me(
     service: FromDishka[IUserService] = None,
-    current_user_id: UUID = UUID("00000000-0000-0000-0000-000000000000"),  # заглушка
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     try:
-        await service.deactivate(current_user_id)
+        await service.deactivate(current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return

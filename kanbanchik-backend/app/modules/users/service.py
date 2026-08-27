@@ -74,8 +74,6 @@ class UserService:
             user.bio = data.bio
         if data.avatar_url is not None:
             user.avatar_url = data.avatar_url
-        if data.is_active is not None:
-            user.is_active = data.is_active
 
         return await self._repo.update(user)
 
