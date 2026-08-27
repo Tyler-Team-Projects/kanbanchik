@@ -24,35 +24,6 @@ async def register(
     return UserResponse.model_validate(user)
 
 
-@router.get("/me", response_model=UserResponse)
-async def get_me(
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    return UserResponse.model_validate(current_user)
-
-@router.get("/user_id", response_model=UserResponse)
-@inject
-async def get_user_by_id(
-    user_id: UUID,
-    service: FromDishka[IUserService] = None,
-):
-    user = await service.get_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-    return UserResponse.model_validate(user)
-
-@router.get("/user_username", response_model=UserResponse)
-@inject
-async def get_user_by_username(
-    username: str,
-    service: FromDishka[IUserService] = None,
-):
-    user = await service.get_by_username(username)
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-    return UserResponse.model_validate(user)
-
-
 @router.patch("/update_me", response_model=UserResponse)
 @inject
 async def update_me(
@@ -78,6 +49,36 @@ async def deactivate_me(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    return UserResponse.model_validate(current_user)
+
+
+@router.get("/user_id", response_model=UserResponse)
+@inject
+async def get_user_by_id(
+    user_id: UUID,
+    service: FromDishka[IUserService] = None,
+):
+    user = await service.get_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    return UserResponse.model_validate(user)
+
+@router.get("/user_username", response_model=UserResponse)
+@inject
+async def get_user_by_username(
+    username: str,
+    service: FromDishka[IUserService] = None,
+):
+    user = await service.get_by_username(username)
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    return UserResponse.model_validate(user)
 
 
 @router.get("/get_all_users", response_model=list[UserResponse])
