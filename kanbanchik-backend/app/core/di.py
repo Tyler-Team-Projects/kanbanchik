@@ -40,7 +40,7 @@ class DatabaseProvider(Provider):
             yield session
 
 
-# Собираем ВСЕ провайдеры в один контейнер
+# Собираем провайдеры в один контейнер
 container = make_async_container(
     CoreProvider(),
     DatabaseProvider(),
