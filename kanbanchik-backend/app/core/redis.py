@@ -1,4 +1,5 @@
 from redis.asyncio import Redis
+from dishka import Provider, Scope, provide
 
 from app.core.config import settings
 
@@ -24,8 +25,12 @@ async def close_redis() -> None:
         _redis_client = None
 
 
-def get_redis() -> Redis:
-    """Получить Redis-клиент."""
-    if _redis_client is None:
-        raise RuntimeError("Redis not initialized")
-    return _redis_client
+class RedisProvider(Provider):
+    """DI-провайдер для redis-клиента"""
+
+    @provide(scope=Scope.APP)
+    def get_redis(self) -> Redis:
+        """Возвращает глобальный экземпляр Redis."""
+        if _redis_client is None:
+            raise RuntimeError("Redis не запущен")
+        return _redis_client
