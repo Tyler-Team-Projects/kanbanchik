@@ -1,5 +1,4 @@
 from uuid import UUID
-from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Query
 from dishka.integrations.fastapi import FromDishka, inject

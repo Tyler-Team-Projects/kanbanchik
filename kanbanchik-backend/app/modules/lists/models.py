@@ -2,7 +2,7 @@ from uuid import UUID
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import String, Text, Integer, Numeric, Boolean, DateTime, func, ForeignKey, CheckConstraint
+from sqlalchemy import String, Text, Integer, Numeric, Boolean, DateTime, func, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from uuid_extension import uuid7
@@ -45,9 +45,9 @@ class List(Base):
     )
 
     # Связи (закомментированы до создания соответствующих моделей)
-    # board: Mapped["Board"] = relationship(
-    #     "Board", back_populates="lists", lazy="raise"
-    # )
+    board: Mapped["Board"] = relationship(
+        "Board", back_populates="lists", lazy="raise"
+    )
     # cards: Mapped[list["Card"]] = relationship(
     #     "Card", back_populates="list", lazy="raise", cascade="all, delete-orphan"
     # )
