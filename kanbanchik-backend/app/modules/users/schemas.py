@@ -1,3 +1,5 @@
+import re
+
 from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator
@@ -10,6 +12,19 @@ class UserCreate(BaseModel):
     name: str | None = Field(None, max_length=100)
     bio: str | None = Field(None, max_length=500)
 
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        if not re.search(r"[a-z]", value):
+            raise ValueError("Пароль должен содержать как минимум 1 строчную букву")
+        if not re.search(r"[A-Z]", value):
+            raise ValueError("Пароль должен содержать как минимум 1 заглавную букву")
+        if not re.search(r"\d", value):
+            raise ValueError("Пароль должен содержать как минимум 1 цифру")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', value):
+            raise ValueError("Пароль должен содержать как минимум 1 специальный символ")
+        return value
+
 
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
@@ -17,7 +32,6 @@ class UserUpdate(BaseModel):
     name: str | None = Field(None, max_length=100)
     bio: str | None = Field(None, max_length=500)
     avatar_url: str | None = None
-    is_active: bool | None = None
 
 
 class UserResponse(BaseModel):
@@ -34,11 +48,4 @@ class UserResponse(BaseModel):
     updated_at: datetime
 
 
-@field_validator('password')
-@classmethod
-def validate_password(cls, v: str) -> str:
-    if not any(char.isdigit() for char in v):
-        raise ValueError("Пароль должен содержать хотя бы одну цифру")
-    if not any(char.isupper() for char in v):
-        raise ValueError("Пароль должен содержать хотя бы одну заглавную букву")
-    return v
+
