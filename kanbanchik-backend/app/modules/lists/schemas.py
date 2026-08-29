@@ -42,10 +42,10 @@ class ListResponse(BaseModel):
     updated_at: datetime
 
 
-class ListMove(BaseModel):
-    """Схема для перемещения колонки (DnD)."""
-    new_position: Decimal = Field(
+class ListReorder(BaseModel):
+    """Схема для распределения колонок."""
+    list_ids: list[UUID] = Field(
         ...,
-        ge=Decimal('0'),
-        description="Новая позиция для сортировки"
+        min_length=1,
+        description="ID колонок в новом порядке"
     )

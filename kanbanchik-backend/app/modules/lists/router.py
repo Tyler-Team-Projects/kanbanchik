@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 from dishka.integrations.fastapi import FromDishka, inject
 
-from app.modules.lists.schemas import ListCreate, ListUpdate, ListResponse, ListMove
+from app.modules.lists.schemas import ListCreate, ListUpdate, ListResponse, ListReorder
 from app.modules.lists.service import IListService
 
 
@@ -80,18 +80,19 @@ async def update_list(
     return ListResponse.model_validate(list)
 
 
-@router.patch("/move", response_model=ListResponse)
+@router.patch("/reorder", response_model=list[ListResponse])
 @inject
-async def move_list(
-    list_id: UUID,
-    data: ListMove,
+async def reorder_lists(
+    board_id: UUID,
+    data: ListReorder,
     service: FromDishka[IListService] = None,
 ):
+    """Переупорядочить колонки (DnD)."""
     try:
-        list = await service.move(list_id, data.new_position)
+        lists = await service.reorder(board_id, data.list_ids)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    return ListResponse.model_validate(list)
+        raise HTTPException(status_code=400, detail=str(e))
+    return [ListResponse.model_validate(l) for l in lists]
 
 
 @router.delete("/delete", status_code=204)

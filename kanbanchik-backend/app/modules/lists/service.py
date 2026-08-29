@@ -14,7 +14,7 @@ class IListService(Protocol):
     async def get_active_by_board(self, board_id: UUID) -> list[List]: ...
     async def get_archived_by_board(self, board_id: UUID) -> list[List]: ...
     async def update(self, list_id: UUID, data: ListUpdate) -> List: ...
-    async def move(self, list_id: UUID, new_position: Decimal) -> List: ...
+    async def reorder(self, board_id: UUID, list_ids: list[UUID]) -> list[List]: ...
     async def delete(self, list_id: UUID) -> None: ...
 
 
@@ -74,16 +74,22 @@ class ListService:
         # 4. Обновляем с проверкой версии
         return await self._repo.update_fields(list_id, fields, current.version)
 
-    async def move(self, list_id: UUID, new_position: Decimal) -> List:
-        current = await self._repo.get_by_id(list_id)
-        if not current:
-            raise ValueError("Колонка не найдена")
+    async def reorder(self, board_id: UUID, list_ids: list[UUID]) -> list[List]:
+        """Переупорядочить колонки на доске."""
 
-        if current.position == new_position:
-            return current
+        # 1. Формируем список для обновления
+        updates = []
+        for index, list_id in enumerate(list_ids, start=1):
+            updates.append({
+                "id": list_id,
+                "position": Decimal(str(index))
+            })
 
-        fields = {"position": new_position}
-        return await self._repo.update_fields(list_id, fields, current.version)
+        # 2. Обновляем позиции
+        await self._repo.update_positions(board_id, updates)
+
+        # 3. Возвращаем обновлённый список колонок
+        return await self._repo.get_active_by_board(board_id)
 
     async def delete(self, list_id: UUID) -> None:
         list = await self._repo.get_by_id(list_id)
