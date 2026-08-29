@@ -44,8 +44,8 @@ def _ensure_jti(data: dict) -> dict:
 def create_access_token(
     data: dict,
     secret_key: str,
-    expires_delta: settings.access_token_expire_minutes,
-    algorithm: settings.jwt_algorithm,
+    expires_delta: timedelta,
+    algorithm: str = "HS256",
 ) -> str:
     """
     Создаёт JWT access token.
@@ -65,21 +65,21 @@ def create_access_token(
 def create_refresh_token(
     data: dict,
     secret_key: str,
-    expires_delta: settings.refresh_token_expire_days,
-    algorithm: str = settings.jwt_algorithm,
+    expires_delta: timedelta,
+    algorithm: str = "HS256",
 ) -> str:
     """
     Создаёт JWT refresh token с уникальным идентификатором jti.
     """
     if expires_delta is None:
-        raise ValueError("Для токена доступа обязательно требуется время жизни")
-
+        raise ValueError("Для токена обновления обязательно требуется время жизни")
+    if "jti" not in data:
+        raise ValueError("Для refresh-токена обязательно поле 'jti'")
     now = datetime.now(timezone.utc)
     payload = data.copy()
     payload.update({
         "exp": now + expires_delta,
         "iat": now,
-        "jti": str(uuid7()),
     })
     return jwt.encode(payload, secret_key, algorithm=algorithm)
 

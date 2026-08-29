@@ -24,7 +24,7 @@ async def register(
     return UserResponse.model_validate(user)
 
 
-@router.post("/me/change-password", response_model=UserResponse)
+@router.post("/me/password", response_model=UserResponse)
 @inject
 async def change_password(
     data: ChangePassword,
@@ -38,7 +38,7 @@ async def change_password(
     return UserResponse.model_validate(user)
 
 
-@router.patch("/update_me", response_model=UserResponse)
+@router.patch("/me", response_model=UserResponse)
 @inject
 async def update_me(
     data: UserUpdate,
@@ -52,7 +52,7 @@ async def update_me(
     return UserResponse.model_validate(user)
 
 
-@router.delete("/deactivate_me", status_code=204)
+@router.delete("/me", status_code=204)
 @inject
 async def deactivate_me(
     service: FromDishka[IUserService] = None,
@@ -72,7 +72,7 @@ async def get_me(
     return UserResponse.model_validate(current_user)
 
 
-@router.get("/user_id", response_model=UserResponse)
+@router.get("/users/{user_id}", response_model=UserResponse)
 @inject
 async def get_user_by_id(
     user_id: UUID,
@@ -83,7 +83,7 @@ async def get_user_by_id(
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     return UserResponse.model_validate(user)
 
-@router.get("/user_username", response_model=UserResponse)
+@router.get("/?username={username}", response_model=UserResponse)
 @inject
 async def get_user_by_username(
     username: str,
@@ -95,7 +95,7 @@ async def get_user_by_username(
     return UserResponse.model_validate(user)
 
 
-@router.get("/get_all_users", response_model=list[UserResponse])
+@router.get("/", response_model=list[UserResponse])
 @inject
 async def get_users(
     skip: int = Query(0, ge=0),

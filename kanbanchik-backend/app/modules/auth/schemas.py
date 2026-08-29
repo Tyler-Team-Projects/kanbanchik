@@ -13,7 +13,7 @@ class RefreshTokenData(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email_or_username: str
     password: str
 
 

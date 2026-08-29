@@ -14,7 +14,7 @@ async def login(
         service: FromDishka[IAuthService] = None,
 ):
     try:
-        tokens = await service.login(data.email, data.password)
+        tokens = await service.login(data.email_or_username, data.password)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
     return tokens
