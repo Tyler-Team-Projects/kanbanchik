@@ -43,6 +43,11 @@ class List(Base):
         onupdate=func.now(),
         nullable=False
     )
+    version: Mapped[int] = mapped_column(
+        Integer,
+        default=1,
+        nullable=False
+    )
 
     # Связи (закомментированы до создания соответствующих моделей)
     board: Mapped["Board"] = relationship(

@@ -49,28 +49,41 @@ class ListService:
         return await self._repo.get_archived_by_board(board_id)
 
     async def update(self, list_id: UUID, data: ListUpdate) -> List:
-        list = await self._repo.get_by_id(list_id)
-        if not list:
+        """Обновить колонку с оптимистичной блокировкой."""
+
+        # 1. Получаем текущую версию
+        current = await self._repo.get_by_id(list_id)
+        if not current:
             raise ValueError("Колонка не найдена")
 
-        if data.name is not None:
-            list.name = data.name
-        if data.position is not None:
-            list.position = data.position
-        if data.wip_limit is not None:
-            list.wip_limit = data.wip_limit
-        if data.is_archived is not None:
-            list.is_archived = data.is_archived
+        # 2. Собираем только изменённые поля
+        fields = {}
+        if data.name is not None and data.name != current.name:
+            fields["name"] = data.name
+        if data.position is not None and data.position != current.position:
+            fields["position"] = data.position
+        if data.wip_limit is not None and data.wip_limit != current.wip_limit:
+            fields["wip_limit"] = data.wip_limit
+        if data.is_archived is not None and data.is_archived != current.is_archived:
+            fields["is_archived"] = data.is_archived
 
-        return await self._repo.update(list)
+        # 3. Если ничего не изменилось - возвращаем текущий объект
+        if not fields:
+            return current
+
+        # 4. Обновляем с проверкой версии
+        return await self._repo.update_fields(list_id, fields, current.version)
 
     async def move(self, list_id: UUID, new_position: Decimal) -> List:
-        list = await self._repo.get_by_id(list_id)
-        if not list:
+        current = await self._repo.get_by_id(list_id)
+        if not current:
             raise ValueError("Колонка не найдена")
 
-        list.position = new_position
-        return await self._repo.update(list)
+        if current.position == new_position:
+            return current
+
+        fields = {"position": new_position}
+        return await self._repo.update_fields(list_id, fields, current.version)
 
     async def delete(self, list_id: UUID) -> None:
         list = await self._repo.get_by_id(list_id)

@@ -2,7 +2,7 @@ from typing import Protocol
 from uuid import UUID
 from decimal import Decimal
 
-from sqlalchemy import select, func, delete
+from sqlalchemy import select, func, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.lists.models import List
@@ -15,6 +15,7 @@ class IListRepository(Protocol):
     async def get_archived_by_board(self, board_id: UUID) -> list[List]: ...
     async def create(self, list: List) -> List: ...
     async def update(self, list: List) -> List: ...
+    async def update_fields(self, list_id: UUID, fields: dict, version: int) -> List: ...
     async def delete(self, list_id: UUID) -> None: ...
     async def get_next_position(self, board_id: UUID) -> Decimal: ...
 
@@ -66,6 +67,27 @@ class ListRepository:
         await self._session.commit()
         await self._session.refresh(list)
         return list
+
+    async def update_fields(self, list_id: UUID, fields: dict, version: int) -> List:
+        """Частичное обновление с оптимистичной блокировкой."""
+        stmt = (
+            update(List)
+            .where(List.id == list_id, List.version == version)
+            .values(**fields, version=List.version + 1)
+            .returning(List)
+        )
+        result = await self._session.execute(stmt)
+        updated = result.scalar_one_or_none()
+
+        if updated is None:
+            raise ValueError(
+                "Конфликт обновления: запись была изменена другим пользователем. "
+                "Пожалуйста, обновите страницу и попробуйте снова."
+            )
+
+        await self._session.commit()
+        await self._session.refresh(updated)
+        return updated
 
     async def delete(self, list_id: UUID) -> None:
         await self._session.execute(

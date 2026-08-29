@@ -8,14 +8,22 @@ class ListCreate(BaseModel):
     """Схема для создания колонки."""
     board_id: UUID
     name: str = Field(min_length=1, max_length=100)
-    position: Decimal | None = Field(None, description="Позиция для сортировки (опционально)")
+    position: Decimal | None = Field(
+        None,
+        ge=Decimal('0'),
+        description="Позиция для сортировки (опционально)"
+    )
     wip_limit: int | None = Field(None, ge=1, description="Лимит карточек в колонке")
 
 
 class ListUpdate(BaseModel):
     """Схема для обновления колонки."""
     name: str | None = Field(None, min_length=1, max_length=100)
-    position: Decimal | None = Field(None, description="Новая позиция для сортировки")
+    position: Decimal | None = Field(
+        None,
+        ge=Decimal('0'),
+        description="Новая позиция для сортировки"
+    )
     wip_limit: int | None = Field(None, ge=1)
     is_archived: bool | None = None
 
@@ -36,4 +44,8 @@ class ListResponse(BaseModel):
 
 class ListMove(BaseModel):
     """Схема для перемещения колонки (DnD)."""
-    new_position: Decimal = Field(..., description="Новая позиция для сортировки")
+    new_position: Decimal = Field(
+        ...,
+        ge=Decimal('0'),
+        description="Новая позиция для сортировки"
+    )
