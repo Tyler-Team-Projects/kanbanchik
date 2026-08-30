@@ -10,6 +10,7 @@ from app.modules.auth.provider import AuthProvider
 from app.modules.users.provider import UsersProvider
 from app.modules.boards.provider import BoardsProvider
 from app.modules.workspaces.provider import WorkspacesProvider
+from app.modules.lists.provider import ListsProvider
 
 
 class CoreProvider(Provider):
@@ -52,4 +53,5 @@ container = make_async_container(
     WorkspacesProvider(),
     AuthProvider(),
     BoardsProvider(),
+    ListsProvider(),
 )

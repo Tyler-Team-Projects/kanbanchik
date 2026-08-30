@@ -37,9 +37,9 @@ class Board(Base):
     # )
 
     # Колонки, принадлежащие доске
-    # lists: Mapped[List["List"]] = relationship(
-    #     "List", back_populates="board", lazy="raise", cascade="all, delete-orphan"
-    # )
+    lists: Mapped[list["List"]] = relationship(
+        "List", back_populates="board", lazy="raise", cascade="all, delete-orphan"
+    )
 
     # labels, принадлежащие доске
     # labels: Mapped[List["Label"]] = relationship(
