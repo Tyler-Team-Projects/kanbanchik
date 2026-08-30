@@ -64,6 +64,7 @@ class ListRepository:
         await self._session.refresh(list)
         return list
 
+    # TODO: удалить позже
     async def update(self, list: List) -> List:
         await self._session.commit()
         await self._session.refresh(list)
@@ -87,7 +88,6 @@ class ListRepository:
             )
 
         await self._session.commit()
-        await self._session.refresh(updated)
         return updated
 
     async def delete(self, list_id: UUID) -> None:

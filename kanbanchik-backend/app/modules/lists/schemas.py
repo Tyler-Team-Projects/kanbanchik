@@ -25,6 +25,7 @@ class ListUpdate(BaseModel):
         description="Новая позиция для сортировки"
     )
     wip_limit: int | None = Field(None, ge=1)
+    version: int
     is_archived: bool | None = None
 
 
@@ -37,6 +38,7 @@ class ListResponse(BaseModel):
     name: str
     position: Decimal
     wip_limit: int | None
+    version: int
     is_archived: bool
     created_at: datetime
     updated_at: datetime

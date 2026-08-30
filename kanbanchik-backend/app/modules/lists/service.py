@@ -72,7 +72,7 @@ class ListService:
             return current
 
         # 4. Обновляем с проверкой версии
-        return await self._repo.update_fields(list_id, fields, current.version)
+        return await self._repo.update_fields(list_id, fields, data.version)
 
     async def reorder(self, board_id: UUID, list_ids: list[UUID]) -> list[List]:
         """Переупорядочить колонки на доске."""

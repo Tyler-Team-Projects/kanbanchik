@@ -2,7 +2,7 @@ from uuid import UUID
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import String, Text, Integer, Numeric, Boolean, DateTime, func, ForeignKey
+from sqlalchemy import String, Integer, Numeric, Boolean, DateTime, func, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from uuid_extension import uuid7
