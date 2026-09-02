@@ -67,9 +67,8 @@ async def get_user_by_id(
     service: FromDishka[IUserService] = None,
 ):
     user = await service.get_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
     return UserResponse.model_validate(user)
+
 
 @router.get("/?username={username}", response_model=UserResponse)
 @inject
@@ -78,8 +77,6 @@ async def get_user_by_username(
     service: FromDishka[IUserService] = None,
 ):
     user = await service.get_by_username(username)
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
     return UserResponse.model_validate(user)
 
 

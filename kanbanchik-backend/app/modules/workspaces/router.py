@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 from dishka.integrations.fastapi import FromDishka, inject
 from uuid import UUID
 
@@ -16,7 +16,6 @@ router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 async def create_workspace(
     data: WorkspaceCreate,
     service: FromDishka[IWorkspaceService] = None,
-    # TODO: заменить на реального пользователя из токена
     current_user_id: UUID = UUID("00000000-0000-0000-0000-000000000000"),
 ):
     workspace = await service.create(data, current_user_id)
@@ -31,8 +30,6 @@ async def get_workspace(
     load_relations: bool = Query(False, description="Load members and boards"),
 ):
     workspace = await service.get_by_id(workspace_id, load_relations)
-    if not workspace:
-        raise HTTPException(status_code=404, detail="Рабочее пространство не найдено")
     return WorkspaceResponse.model_validate(workspace)
 
 
@@ -54,12 +51,7 @@ async def update_workspace(
     service: FromDishka[IWorkspaceService] = None,
     current_user_id: UUID = UUID("00000000-0000-0000-0000-000000000000"),
 ):
-    try:
-        workspace = await service.update(workspace_id, data, current_user_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+    workspace = await service.update(workspace_id, data, current_user_id)
     return WorkspaceResponse.model_validate(workspace)
 
 
@@ -70,12 +62,7 @@ async def archive_workspace(
     service: FromDishka[IWorkspaceService] = None,
     current_user_id: UUID = UUID("00000000-0000-0000-0000-000000000000"),
 ):
-    try:
-        workspace = await service.archive(workspace_id, current_user_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+    workspace = await service.archive(workspace_id, current_user_id)
     return WorkspaceResponse.model_validate(workspace)
 
 
@@ -86,16 +73,10 @@ async def delete_workspace(
     service: FromDishka[IWorkspaceService] = None,
     current_user_id: UUID = UUID("00000000-0000-0000-0000-000000000000"),
 ):
-    try:
-        await service.delete(workspace_id, current_user_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+    await service.delete(workspace_id, current_user_id)
     return
 
 
-# Управление участниками
 @router.post("/{workspace_id}/members", response_model=WorkspaceMemberResponse, status_code=201)
 @inject
 async def add_member(
@@ -104,12 +85,7 @@ async def add_member(
     service: FromDishka[IWorkspaceService] = None,
     current_user_id: UUID = UUID("00000000-0000-0000-0000-000000000000"),
 ):
-    try:
-        member = await service.add_member(workspace_id, data, current_user_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+    member = await service.add_member(workspace_id, data, current_user_id)
     return WorkspaceMemberResponse.model_validate(member)
 
 
@@ -121,12 +97,7 @@ async def remove_member(
     service: FromDishka[IWorkspaceService] = None,
     current_user_id: UUID = UUID("00000000-0000-0000-0000-000000000000"),
 ):
-    try:
-        await service.remove_member(workspace_id, user_id, current_user_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+    await service.remove_member(workspace_id, user_id, current_user_id)
     return
 
 
@@ -139,12 +110,7 @@ async def update_member_role(
     service: FromDishka[IWorkspaceService] = None,
     current_user_id: UUID = UUID("00000000-0000-0000-0000-000000000000"),
 ):
-    try:
-        member = await service.update_member_role(workspace_id, user_id, data, current_user_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+    member = await service.update_member_role(workspace_id, user_id, data, current_user_id)
     return WorkspaceMemberResponse.model_validate(member)
 
 

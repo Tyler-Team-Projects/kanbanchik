@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 from dishka.integrations.fastapi import FromDishka, inject
 
 from app.modules.lists.schemas import ListCreate, ListUpdate, ListResponse, ListReorder
@@ -16,10 +16,7 @@ async def create_list(
     data: ListCreate,
     service: FromDishka[IListService] = None,
 ):
-    try:
-        list = await service.create(data)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    list = await service.create(data)
     return ListResponse.model_validate(list)
 
 
@@ -30,8 +27,6 @@ async def get_list_by_id(
     service: FromDishka[IListService] = None,
 ):
     list = await service.get_by_id(list_id)
-    if not list:
-        raise HTTPException(status_code=404, detail="Колонка не найдена")
     return ListResponse.model_validate(list)
 
 
@@ -73,10 +68,7 @@ async def update_list(
     data: ListUpdate,
     service: FromDishka[IListService] = None,
 ):
-    try:
-        list = await service.update(list_id, data)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    list = await service.update(list_id, data)
     return ListResponse.model_validate(list)
 
 
@@ -87,11 +79,7 @@ async def reorder_lists(
     data: ListReorder,
     service: FromDishka[IListService] = None,
 ):
-    """Переупорядочить колонки (DnD)."""
-    try:
-        lists = await service.reorder(board_id, data.list_ids)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    lists = await service.reorder(board_id, data.list_ids)
     return [ListResponse.model_validate(l) for l in lists]
 
 
@@ -101,8 +89,5 @@ async def delete_list(
     list_id: UUID,
     service: FromDishka[IListService] = None,
 ):
-    try:
-        await service.delete(list_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    await service.delete(list_id)
     return
