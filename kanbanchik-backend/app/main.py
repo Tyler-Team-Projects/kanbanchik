@@ -1,14 +1,16 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dishka.integrations.fastapi import setup_dishka
+from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
 from app.core.redis import init_redis, close_redis
 from app.db.base import engine
 from app.core.di import container
 from app.api.v1 import router as api_v1_router
-
+from app.core.exceptions import BaseDomainException, InternalServerErrorException
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -75,4 +77,48 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=True,
+    )
+
+def create_error_response(exc: BaseDomainException) -> JSONResponse:
+    """Создание JSON-ответ для доменного исключения."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=exc.headers or {},
+    )
+
+
+@app.exception_handler(BaseDomainException)
+async def domain_exception_handler(request: Request, exc: BaseDomainException) -> JSONResponse:
+    """Обработчик всех доменных исключений."""
+    return create_error_response(exc)
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
+    """Обработчик ошибок целостности БД."""
+    # Проверяем, что это ошибка дубликата
+    if "duplicate key" in str(exc).lower():
+        detail = "Запись с таким значением уже существует"
+        if "email" in str(exc).lower():
+            detail = "Пользователь с таким email уже существует"
+        elif "username" in str(exc).lower():
+            detail = "Пользователь с таким username уже существует"
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"detail": detail},
+        )
+
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Внутренняя ошибка сервера"},
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Глобальный обработчик всех непредвиденных ошибок."""
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Внутренняя ошибка сервера"},
     )

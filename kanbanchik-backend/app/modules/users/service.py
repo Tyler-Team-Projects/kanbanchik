@@ -7,6 +7,12 @@ from app.modules.users.schemas import UserCreate, UserUpdate
 from app.modules.users.repository import IUserRepository
 
 from app.core.security import verify_password, get_password_hash
+from app.core.exceptions import (
+    UserNotFoundException,
+    UserEmailAlreadyExistsException,
+    UserUsernameAlreadyExistsException,
+    InvalidCredentialsException,
+)
 
 
 class IUserService(Protocol):
@@ -25,13 +31,12 @@ class UserService:
         self._repo = repo
 
     async def register(self, data: UserCreate) -> User:
-        # Проверки уникальности
         existing_email = await self._repo.get_by_email(str(data.email))
         if existing_email:
-            raise ValueError("Данная почта уже зарегистрирована")
+            raise UserEmailAlreadyExistsException(str(data.email))
         existing_username = await self._repo.get_by_username(data.username)
         if existing_username:
-            raise ValueError("Данный username уже зарегистрирован")
+            raise UserUsernameAlreadyExistsException(data.username)
 
         hashed = get_password_hash(data.password)
         user = User(
@@ -55,19 +60,17 @@ class UserService:
     async def update_profile(self, user_id: UUID, data: UserUpdate) -> User:
         user = await self._repo.get_by_id(user_id)
         if not user:
-            raise ValueError("Пользователь не найден")
+            raise UserNotFoundException(user_id=str(user_id))
 
-        # Обновляем только переданные поля
         if data.email is not None:
-            # Проверяем, что новый email не занят другим пользователем
             existing = await self._repo.get_by_email(str(data.email))
             if existing and existing.id != user_id:
-                raise ValueError("Почта уже занята другим пользователем")
+                raise UserEmailAlreadyExistsException(str(data.email))
             user.email = str(data.email)
         if data.username is not None:
             existing = await self._repo.get_by_username(data.username)
             if existing and existing.id != user_id:
-                raise ValueError("Username уже занят другим пользователем")
+                raise UserUsernameAlreadyExistsException(data.username)
             user.username = data.username
         if data.name is not None:
             user.name = data.name
@@ -79,10 +82,9 @@ class UserService:
         return await self._repo.update(user)
 
     async def deactivate(self, user_id: UUID) -> None:
-        # Мягкое удаление (установка is_active=False)
         user = await self._repo.get_by_id(user_id)
         if not user:
-            raise ValueError("Пользователь не найден")
+            raise UserNotFoundException(user_id=str(user_id))
         user.is_active = False
         await self._repo.update(user)
 
@@ -92,10 +94,10 @@ class UserService:
     async def change_password(self, user_id: UUID, old_password: str, new_password: str) -> User:
         user = await self._repo.get_by_id(user_id)
         if not user:
-            raise ValueError("Пользователь не найден")
+            raise UserNotFoundException(user_id=str(user_id))
 
         if not verify_password(old_password, user.password_hash):
-            raise ValueError("Неверный пароль")
+            raise InvalidCredentialsException()
 
         user.password_hash = get_password_hash(new_password)
         return await self._repo.update(user)

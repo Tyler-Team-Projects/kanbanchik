@@ -6,6 +6,13 @@ from app.modules.lists.models import List
 from app.modules.lists.schemas import ListCreate, ListUpdate
 from app.modules.lists.repository import IListRepository
 
+from app.core.exceptions import (
+    ListNotFoundException,
+    ListAlreadyArchivedException,
+    ListNotArchivedException,
+    ListConflictUpdateException,
+)
+
 
 class IListService(Protocol):
     async def create(self, data: ListCreate) -> List: ...
@@ -54,7 +61,7 @@ class ListService:
         # 1. Получаем текущую версию
         current = await self._repo.get_by_id(list_id)
         if not current:
-            raise ValueError("Колонка не найдена")
+            raise ListNotFoundException(str(list_id))
 
         # 2. Собираем только изменённые поля
         fields = {}
@@ -94,5 +101,5 @@ class ListService:
     async def delete(self, list_id: UUID) -> None:
         list = await self._repo.get_by_id(list_id)
         if not list:
-            raise ValueError("Колонка не найдена")
+            raise ListNotFoundException(str(list_id))
         await self._repo.delete(list_id)

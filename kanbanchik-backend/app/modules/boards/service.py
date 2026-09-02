@@ -5,6 +5,12 @@ from app.modules.boards.models import Board
 from app.modules.boards.schemas import BoardCreate, BoardUpdate
 from app.modules.boards.repository import IBoardRepository
 
+from app.core.exceptions import (
+    BoardNotFoundException,
+    BoardAlreadyArchivedException,
+    BoardNotArchivedException,
+)
+
 
 class IBoardService(Protocol):
     async def create(self, data: BoardCreate) -> Board: ...
@@ -50,7 +56,7 @@ class BoardService:
     async def update(self, board_id: UUID, data: BoardUpdate) -> Board:
         board = await self._repo.get_by_id(board_id)
         if not board:
-            raise ValueError("Доска не найдена")
+            raise BoardNotFoundException(str(board_id))
 
         if data.name is not None:
             board.name = data.name
@@ -69,9 +75,9 @@ class BoardService:
         """Архивировать доску."""
         board = await self._repo.get_by_id(board_id)
         if not board:
-            raise ValueError("Доска не найдена")
+            raise BoardNotFoundException(str(board_id))
         if board.is_archived:
-            raise ValueError("Доска уже в архиве")
+            raise BoardAlreadyArchivedException()
 
         board.is_archived = True
         return await self._repo.update(board)
@@ -80,9 +86,9 @@ class BoardService:
         """Восстановить доску из архива."""
         board = await self._repo.get_by_id(board_id)
         if not board:
-            raise ValueError("Доска не найдена")
+            raise BoardNotFoundException(str(board_id))
         if not board.is_archived:
-            raise ValueError("Доска не в архиве")
+            raise BoardNotArchivedException()
 
         board.is_archived = False
         return await self._repo.update(board)
@@ -90,5 +96,5 @@ class BoardService:
     async def delete(self, board_id: UUID) -> None:
         board = await self._repo.get_by_id(board_id)
         if not board:
-            raise ValueError("Доска не найдена")
+            raise BoardNotFoundException(str(board_id))
         await self._repo.delete(board_id)

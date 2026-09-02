@@ -17,10 +17,7 @@ async def register(
     data: UserCreate,
     service: FromDishka[IUserService] = None,
 ):
-    try:
-        user = await service.register(data)
-    except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+    user = await service.register(data)
     return UserResponse.model_validate(user)
 
 
@@ -31,10 +28,7 @@ async def change_password(
     service: FromDishka[IUserService] = None,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    try:
-        user = await service.change_password(current_user.id, data.old_password, data.new_password)
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e))
+    user = await service.change_password(current_user.id, data.old_password, data.new_password)
     return UserResponse.model_validate(user)
 
 
@@ -45,10 +39,7 @@ async def update_me(
     service: FromDishka[IUserService] = None,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    try:
-        user = await service.update_profile(current_user.id, data)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    user = await service.update_profile(current_user.id, data)
     return UserResponse.model_validate(user)
 
 
@@ -58,10 +49,7 @@ async def deactivate_me(
     service: FromDishka[IUserService] = None,
     current_user: CurrentUser = Depends(get_current_user)
 ):
-    try:
-        await service.deactivate(current_user.id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    await service.deactivate(current_user.id)
     return
 
 

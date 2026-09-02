@@ -1,5 +1,6 @@
 from typing import Protocol
 from uuid import UUID
+
 from app.modules.workspaces.models import Workspace, WorkspaceMember
 from app.modules.workspaces.schemas import (
     WorkspaceCreate, WorkspaceUpdate,
@@ -7,7 +8,17 @@ from app.modules.workspaces.schemas import (
     WorkspaceRole
 )
 from app.modules.workspaces.repository import IWorkspaceRepository
-from app.modules.users.repository import IUserRepository  # для проверки существования пользователя
+from app.modules.users.repository import IUserRepository
+
+from app.core.exceptions import (
+    WorkspaceNotFoundException,
+    WorkspaceMemberNotFoundException,
+    WorkspaceMemberAlreadyExistsException,
+    WorkspaceOwnerCannotBeRemovedException,
+    WorkspaceNameAlreadyExistsException,
+    PermissionDeniedException,
+    UserNotFoundException,
+)
 
 
 class IWorkspaceService(Protocol):
@@ -55,10 +66,9 @@ class WorkspaceService:
     async def update(self, workspace_id: UUID, data: WorkspaceUpdate, current_user_id: UUID) -> Workspace:
         workspace = await self._repo.get_by_id(workspace_id)
         if not workspace:
-            raise ValueError("Workspace not found")
-        # Проверка прав: только владелец или администратор может изменять
+            raise WorkspaceNotFoundException(str(workspace_id))
         if not await self._is_admin_or_owner(workspace_id, current_user_id):
-            raise PermissionError("Insufficient permissions to update workspace")
+            raise PermissionDeniedException("Недостаточно прав для обновления рабочего пространства")
         # Обновляем поля
         if data.name is not None:
             workspace.name = data.name
@@ -73,46 +83,46 @@ class WorkspaceService:
     async def archive(self, workspace_id: UUID, current_user_id: UUID) -> Workspace:
         workspace = await self._repo.get_by_id(workspace_id)
         if not workspace:
-            raise ValueError("Рабочее пространство не найдено")
+            raise WorkspaceNotFoundException(str(workspace_id))
         if workspace.owner_id != current_user_id:
-            raise PermissionError("Только владелец можен архивировать пространство")
+            raise PermissionDeniedException("Только владелец может архивировать пространство")
         workspace.is_archived = True
         return await self._repo.update(workspace)
 
     async def delete(self, workspace_id: UUID, current_user_id: UUID) -> None:
         workspace = await self._repo.get_by_id(workspace_id)
         if not workspace:
-            raise ValueError("Рабочее пространство не найдено")
+            raise WorkspaceNotFoundException(str(workspace_id))
         if workspace.owner_id != current_user_id:
-            raise PermissionError("Только владелец можен удалить пространство")
+            raise PermissionDeniedException("Только владелец может удалить пространство")
         await self._repo.delete(workspace_id)
 
     # Управление участниками
     async def add_member(self, workspace_id: UUID, data: WorkspaceMemberCreate, current_user_id: UUID) -> WorkspaceMember:
         # Проверка прав: только владелец или админ может добавлять
         if not await self._is_admin_or_owner(workspace_id, current_user_id):
-            raise PermissionError("Недостаточно прав для добавления участников")
+            raise PermissionDeniedException("Недостаточно прав для добавления участников")
         # Проверяем, что пользователь существует
         user = await self._user_repo.get_by_id(data.user_id)
         if not user:
-            raise ValueError("Пользователь не найден")
+            raise UserNotFoundException(str(data.user_id))
         # Проверяем, не состоит ли уже
         existing = await self._repo.get_member(workspace_id, data.user_id)
         if existing:
-            raise ValueError("Пользователь уже состоит в рабочем пространстве")
+            raise WorkspaceMemberAlreadyExistsException()
         return await self._repo.add_member(workspace_id, data.user_id, data.role.value)
 
     async def remove_member(self, workspace_id: UUID, user_id_to_remove: UUID, current_user_id: UUID) -> None:
         # Проверка прав: владелец или админ, либо сам пользователь удаляет себя
         if current_user_id != user_id_to_remove:
             if not await self._is_admin_or_owner(workspace_id, current_user_id):
-                raise PermissionError("Недостаточно прав для удаления участников")
+                raise PermissionDeniedException("Недостаточно прав для удаления участников")
         # Нельзя удалить владельца (если только он не передаст права)
         member = await self._repo.get_member(workspace_id, user_id_to_remove)
         if not member:
-            raise ValueError("Участник не найден")
+            raise WorkspaceMemberNotFoundException(str(user_id_to_remove))
         if member.role == WorkspaceRole.OWNER.value:
-            raise ValueError("Нельзя удалить владельца пространства")
+            raise WorkspaceOwnerCannotBeRemovedException()
         await self._repo.remove_member(workspace_id, user_id_to_remove)
 
     async def update_member_role(
@@ -124,25 +134,23 @@ class WorkspaceService:
     ) -> WorkspaceMember:
         # Проверка прав: только владелец или админ
         if not await self._is_admin_or_owner(workspace_id, current_user_id):
-            raise PermissionError("Insufficient permissions to change roles")
-
+            raise PermissionDeniedException("Недостаточно прав для изменения ролей")
         workspace = await self._repo.get_by_id(workspace_id)
         if not workspace:
-            raise ValueError("Workspace not found")
-
+            raise WorkspaceNotFoundException(str(workspace_id))
         member = await self._repo.get_member(workspace_id, user_id_to_update)
         if not member:
-            raise ValueError("Member not found")
+            raise WorkspaceMemberNotFoundException(str(user_id_to_update))
 
         # Запрещаем изменять роль владельца (если это не сам владелец и не передача прав)
         if member.role == WorkspaceRole.OWNER.value and current_user_id != workspace.owner_id:
-            raise PermissionError("Only the owner can change the owner's role")
+            raise PermissionDeniedException("Только владелец может менять роль владельца")
 
         # Если мы назначаем нового владельца
         if data.role == WorkspaceRole.OWNER:
             # Проверяем, что текущий пользователь – текущий владелец
             if current_user_id != workspace.owner_id:
-                raise PermissionError("Only the current owner can transfer ownership")
+                raise PermissionDeniedException("Только текущий владелец может передать права")
             # Обновляем owner_id в таблице workspaces
             workspace.owner_id = user_id_to_update
             await self._repo.update(workspace)  # коммитим изменение владельца
