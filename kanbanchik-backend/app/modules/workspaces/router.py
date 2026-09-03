@@ -10,6 +10,7 @@ from app.modules.workspaces.schemas import (
     WorkspaceMemberCreate, WorkspaceMemberUpdate, WorkspaceMemberResponse
 )
 from app.modules.workspaces.service import IWorkspaceService
+from app.core.exceptions import PermissionDeniedException
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
@@ -45,7 +46,9 @@ async def get_user_workspaces(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     if user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Доступ запрещен: вы можете просматривать только свои рабочие пространства")
+        raise PermissionDeniedException(
+            "Доступ запрещен: вы можете просматривать только свои рабочие пространства"
+        )
     workspaces = await service.get_user_workspaces(user_id)
     return [WorkspaceResponse.model_validate(w) for w in workspaces]
 
