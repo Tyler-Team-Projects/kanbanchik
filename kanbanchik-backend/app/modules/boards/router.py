@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from dishka.integrations.fastapi import FromDishka, inject
 
+from app.api.deps import get_current_user
+from app.api.schemas import CurrentUser
 from app.modules.boards.schemas import BoardCreate, BoardUpdate, BoardResponse
 from app.modules.boards.service import IBoardService
-
 
 router = APIRouter(prefix="/boards", tags=["boards"])
 
@@ -15,8 +16,9 @@ router = APIRouter(prefix="/boards", tags=["boards"])
 async def create_board(
     data: BoardCreate,
     service: FromDishka[IBoardService] = None,
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    board = await service.create(data)
+    board = await service.create(data, current_user.id)
     return BoardResponse.model_validate(board)
 
 
@@ -25,8 +27,9 @@ async def create_board(
 async def get_board_by_id(
     board_id: UUID,
     service: FromDishka[IBoardService] = None,
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    board = await service.get_by_id(board_id)
+    board = await service.get_by_id(board_id, current_user.id)
     return BoardResponse.model_validate(board)
 
 
@@ -37,8 +40,9 @@ async def get_boards_by_workspace(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     service: FromDishka[IBoardService] = None,
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    boards = await service.get_by_workspace(workspace_id, skip, limit)
+    boards = await service.get_by_workspace(workspace_id, current_user.id, skip, limit)
     return [BoardResponse.model_validate(b) for b in boards]
 
 
@@ -48,8 +52,9 @@ async def get_all_active_boards(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     service: FromDishka[IBoardService] = None,
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    boards = await service.get_all_active(skip, limit)
+    boards = await service.get_all_active(current_user.id, skip, limit)
     return [BoardResponse.model_validate(b) for b in boards]
 
 
@@ -59,8 +64,9 @@ async def get_archived_boards(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     service: FromDishka[IBoardService] = None,
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    boards = await service.get_archived(skip, limit)
+    boards = await service.get_archived(current_user.id, skip, limit)
     return [BoardResponse.model_validate(b) for b in boards]
 
 
@@ -70,8 +76,9 @@ async def get_all_boards(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     service: FromDishka[IBoardService] = None,
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    boards = await service.get_all(skip, limit)
+    boards = await service.get_all(current_user.id, skip, limit)
     return [BoardResponse.model_validate(b) for b in boards]
 
 
@@ -81,8 +88,9 @@ async def update_board(
     board_id: UUID,
     data: BoardUpdate,
     service: FromDishka[IBoardService] = None,
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    board = await service.update(board_id, data)
+    board = await service.update(board_id, data, current_user.id)
     return BoardResponse.model_validate(board)
 
 
@@ -91,8 +99,9 @@ async def update_board(
 async def archive_board(
     board_id: UUID,
     service: FromDishka[IBoardService] = None,
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    board = await service.archive(board_id)
+    board = await service.archive(board_id, current_user.id)
     return BoardResponse.model_validate(board)
 
 
@@ -101,8 +110,9 @@ async def archive_board(
 async def restore_board(
     board_id: UUID,
     service: FromDishka[IBoardService] = None,
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    board = await service.restore(board_id)
+    board = await service.restore(board_id, current_user.id)
     return BoardResponse.model_validate(board)
 
 
@@ -111,6 +121,7 @@ async def restore_board(
 async def delete_board(
     board_id: UUID,
     service: FromDishka[IBoardService] = None,
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    await service.delete(board_id)
+    await service.delete(board_id, current_user.id)
     return
