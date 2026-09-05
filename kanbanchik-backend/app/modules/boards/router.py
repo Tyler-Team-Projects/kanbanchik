@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, Query, Depends
 from dishka.integrations.fastapi import FromDishka, inject
 
 from app.api.deps import get_current_user
@@ -18,10 +18,7 @@ async def create_board(
     service: FromDishka[IBoardService] = None,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    try:
-        board = await service.create(data, current_user.id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    board = await service.create(data, current_user.id)
     return BoardResponse.model_validate(board)
 
 
@@ -33,8 +30,6 @@ async def get_board_by_id(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     board = await service.get_by_id(board_id, current_user.id)
-    if not board:
-        raise HTTPException(status_code=404, detail="Доска не найдена")
     return BoardResponse.model_validate(board)
 
 
@@ -95,10 +90,7 @@ async def update_board(
     service: FromDishka[IBoardService] = None,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    try:
-        board = await service.update(board_id, data, current_user.id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    board = await service.update(board_id, data, current_user.id)
     return BoardResponse.model_validate(board)
 
 
@@ -109,10 +101,7 @@ async def archive_board(
     service: FromDishka[IBoardService] = None,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    try:
-        board = await service.archive(board_id, current_user.id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    board = await service.archive(board_id, current_user.id)
     return BoardResponse.model_validate(board)
 
 
@@ -123,10 +112,7 @@ async def restore_board(
     service: FromDishka[IBoardService] = None,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    try:
-        board = await service.restore(board_id, current_user.id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    board = await service.restore(board_id, current_user.id)
     return BoardResponse.model_validate(board)
 
 
@@ -137,8 +123,5 @@ async def delete_board(
     service: FromDishka[IBoardService] = None,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    try:
-        await service.delete(board_id, current_user.id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    await service.delete(board_id, current_user.id)
     return

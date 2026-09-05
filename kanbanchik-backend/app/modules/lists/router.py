@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, Query, Depends
 from dishka.integrations.fastapi import FromDishka, inject
 
 from app.api.deps import get_current_user
@@ -18,10 +18,7 @@ async def create_list(
     service: FromDishka[IListService] = None,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    try:
-        list_obj = await service.create(data, current_user.id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    list_obj = await service.create(data, current_user.id)
     return ListResponse.model_validate(list_obj)
 
 
@@ -33,8 +30,6 @@ async def get_list_by_id(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     list_obj = await service.get_by_id(list_id, current_user.id)
-    if not list_obj:
-        raise HTTPException(status_code=404, detail="Колонка не найдена")
     return ListResponse.model_validate(list_obj)
 
 
@@ -80,10 +75,7 @@ async def update_list(
     service: FromDishka[IListService] = None,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    try:
-        list_obj = await service.update(list_id, data, current_user.id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    list_obj = await service.update(list_id, data, current_user.id)
     return ListResponse.model_validate(list_obj)
 
 
@@ -95,10 +87,7 @@ async def reorder_lists(
     service: FromDishka[IListService] = None,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    try:
-        lists = await service.reorder(board_id, data.list_ids, current_user.id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    lists = await service.reorder(board_id, data.list_ids, current_user.id)
     return [ListResponse.model_validate(l) for l in lists]
 
 
@@ -109,8 +98,5 @@ async def delete_list(
     service: FromDishka[IListService] = None,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    try:
-        await service.delete(list_id, current_user.id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    await service.delete(list_id, current_user.id)
     return

@@ -6,6 +6,12 @@ from app.modules.lists.models import List
 from app.modules.lists.schemas import ListCreate, ListUpdate
 from app.modules.lists.repository import IListRepository
 
+from app.core.exceptions import (
+    ListNotFoundException,
+    ListAlreadyArchivedException,
+    ListNotArchivedException,
+)
+
 
 class IListService(Protocol):
     async def create(self, data: ListCreate, current_user_id: UUID) -> List: ...
@@ -57,7 +63,7 @@ class ListService:
         # TODO: добавить проверку прав (доступ к доске)
         current = await self._repo.get_by_id(list_id)
         if not current:
-            raise ValueError("Колонка не найдена")
+            raise ListNotFoundException(str(list_id))
 
         fields = {}
         if data.name is not None and data.name != current.name:
@@ -90,5 +96,5 @@ class ListService:
         # TODO: добавить проверку прав (доступ к доске)
         list_obj = await self._repo.get_by_id(list_id)
         if not list_obj:
-            raise ValueError("Колонка не найдена")
+            raise ListNotFoundException(str(list_id))
         await self._repo.delete(list_id)

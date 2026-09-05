@@ -16,6 +16,14 @@ from app.modules.users.models import User
 from app.modules.users.repository import IUserRepository
 from uuid_extension import uuid7
 
+from app.core.exceptions import (
+    InvalidCredentialsException,
+    InvalidTokenException,
+    RefreshTokenNotFoundException,
+    UserNotFoundException,
+    UserInactiveException,
+)
+
 
 class IAuthService(Protocol):
     async def login(self, email: str, password: str) -> dict[str, str]:
@@ -48,9 +56,9 @@ class AuthService:
     async def login(self, email_or_username: str, password: str) -> tuple[str, str]:
         user = await self._user_repo.get_by_email_or_username(email_or_username)
         if not user:
-            raise ValueError("Неверная почта, username или пароль")
+            raise InvalidCredentialsException()
         if not verify_password(password, user.password_hash):
-            raise ValueError("Неверная почта, username или пароль")
+            raise InvalidCredentialsException()
 
         # Генерируем jti для refresh-токена
         jti = str(uuid7())
@@ -84,21 +92,21 @@ class AuthService:
         try:
             payload = decode_token(refresh_token, self._settings.secret_key, self._settings.jwt_algorithm)
         except ValueError as e:
-            raise ValueError(f"Неверный refresh токен: {str(e)}")
+            raise InvalidTokenException()
 
         jti = payload.get("jti")
         user_id = payload.get("sub")
         if not jti or not user_id:
-            raise ValueError("Недопустимая payload токена обновления: отсутствует jti или sub.")
+            raise InvalidTokenException()
 
         # Проверяем существование токена в Redis
         token_data = await self._refresh_repo.get(jti)
         if token_data is None:
-            raise ValueError("Токен обновления не найден или срок его действия истек.")
+            raise RefreshTokenNotFoundException()
 
         # Проверяем, что user_id совпадает с тем, что в токене
         if token_data.user_id != user_id:
-            raise ValueError("Несоответствие пользователя токена")
+            raise InvalidTokenException()
 
         # Удаляем старый refresh-токен (ротация)
         await self._refresh_repo.delete(jti)
@@ -132,11 +140,11 @@ class AuthService:
         try:
             payload = decode_token(refresh_token, self._settings.secret_key, self._settings.jwt_algorithm)
         except ValueError as e:
-            raise ValueError(f"Неверный refresh токен: {str(e)}")
+            raise InvalidTokenException()
 
         jti = payload.get("jti")
         if not jti:
-            raise ValueError("Недопустимая payload токена обновления: отсутствует jti")
+            raise InvalidTokenException()
 
         # Удаляем из Redis
         await self._refresh_repo.delete(jti)
@@ -146,21 +154,21 @@ class AuthService:
         try:
             payload = decode_token(token, self._settings.secret_key, self._settings.jwt_algorithm)
         except ValueError as e:
-            raise ValueError(f"Invalid token: {str(e)}")
+            raise InvalidTokenException()
 
         user_id_str = payload.get("sub")
         if not user_id_str:
-            raise ValueError("Missing sub claim")
+            raise InvalidTokenException()
 
         try:
             user_id = UUID(user_id_str)
         except ValueError:
-            raise ValueError("Invalid user id format")
+            raise InvalidTokenException()
 
         user = await self._user_repo.get_by_id(user_id)
         if not user:
-            raise ValueError("User not found")
+            raise UserNotFoundException()
         if not user.is_active:
-            raise ValueError("User inactive")
+            raise UserInactiveException()
 
         return user

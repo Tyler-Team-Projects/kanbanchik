@@ -6,6 +6,7 @@ from sqlalchemy import select, func, delete, update, bindparam
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.lists.models import List
+from app.core.exceptions import ListConflictUpdateException, ListNotFoundException
 
 
 class IListRepository(Protocol):
@@ -82,10 +83,7 @@ class ListRepository:
         updated = result.scalar_one_or_none()
 
         if updated is None:
-            raise ValueError(
-                "Конфликт обновления: запись была изменена другим пользователем. "
-                "Пожалуйста, обновите страницу и попробуйте снова."
-            )
+            raise ListConflictUpdateException()
 
         await self._session.commit()
         return updated
@@ -122,7 +120,7 @@ class ListRepository:
 
         if len(existing_ids) != len(list_ids):
             missing = set(list_ids) - existing_ids
-            raise ValueError(f"Колонки с ID {missing} не найдены на доске {board_id}")
+            raise ListNotFoundException(str(missing))
 
         def _bulk_update(connection):
             for u in updates:
