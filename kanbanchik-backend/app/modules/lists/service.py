@@ -10,7 +10,6 @@ from app.core.exceptions import (
     ListNotFoundException,
     ListAlreadyArchivedException,
     ListNotArchivedException,
-    ListConflictUpdateException,
 )
 
 
@@ -93,9 +92,9 @@ class ListService:
         await self._repo.update_positions(board_id, updates)
         return await self._repo.get_active_by_board(board_id)
 
-async def delete(self, list_id: UUID, current_user_id: UUID) -> None:
-    # TODO: добавить проверку прав (доступ к доске)
-    list_obj = await self._repo.get_by_id(list_id)
-    if not list_obj:
-        raise ListNotFoundException(str(list_id))
-    await self._repo.delete(list_id)
+    async def delete(self, list_id: UUID, current_user_id: UUID) -> None:
+        # TODO: добавить проверку прав (доступ к доске)
+        list_obj = await self._repo.get_by_id(list_id)
+        if not list_obj:
+            raise ListNotFoundException(str(list_id))
+        await self._repo.delete(list_id)
