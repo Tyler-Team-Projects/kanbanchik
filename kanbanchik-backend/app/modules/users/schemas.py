@@ -50,7 +50,7 @@ class UserResponse(BaseModel):
 
 class ChangePassword(BaseModel):
     old_password: str
-    new_password: str = Field(min_lingth=8)
+    new_password: str = Field(min_length=8)
 
     @field_validator("new_password")
     @classmethod
