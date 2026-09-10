@@ -1,8 +1,10 @@
-import pytest
-from uuid import uuid4
+import time
 from datetime import timedelta, datetime, timezone
+from uuid import UUID
+
+import pytest
 from jose import jwt
-import time_machine  # Для заморозки времени и тестирования протухания токенов
+from uuid_extension import uuid7
 
 from app.core.exceptions import (
     InvalidCredentialsException,
@@ -13,23 +15,20 @@ from app.core.exceptions import (
 )
 from app.core.security import get_password_hash, create_access_token, create_refresh_token, decode_token
 from app.modules.auth.service import AuthService
-from app.modules.auth.repository import IRefreshTokenRepository
 from app.modules.auth.schemas import RefreshTokenData
-from app.modules.users.repository import IUserRepository
 from app.modules.users.models import User
 from app.core.config import Settings
 from tests.factories import UserFactory
-from uuid_extension import uuid7
 
 
 # ---------- Fake репозитории ----------
-class FakeUserRepository(IUserRepository):
+class FakeUserRepository:
     def __init__(self):
         self._users: dict[str, User] = {}
         self._email_index: dict[str, str] = {}
         self._username_index: dict[str, str] = {}
 
-    async def get_by_id(self, user_id):
+    async def get_by_id(self, user_id: UUID) -> User | None:
         key = str(user_id)
         return self._users.get(key)
 
@@ -49,7 +48,7 @@ class FakeUserRepository(IUserRepository):
         return user
 
 
-class FakeRefreshTokenRepository(IRefreshTokenRepository):
+class FakeRefreshTokenRepository:
     def __init__(self):
         self._tokens: dict[str, dict] = {}
 
@@ -142,7 +141,7 @@ async def test_login_nonexistent_user_raises_invalid_credentials(auth_service):
 
 @pytest.mark.asyncio
 async def test_refresh_success(auth_service, fake_refresh_repo, test_settings):
-    user_id = str(uuid4())
+    user_id = str(uuid7())
     jti = "test-jti-1"
     refresh_ttl = test_settings.refresh_token_expire_days * 24 * 3600
     await fake_refresh_repo.save(jti, user_id, refresh_ttl)
@@ -196,7 +195,7 @@ async def test_refresh_with_non_existing_jti_raises(auth_service, test_settings)
 
 @pytest.mark.asyncio
 async def test_logout_deletes_token(auth_service, fake_refresh_repo, test_settings):
-    user_id = str(uuid4())
+    user_id = str(uuid7())
     jti = "logout-jti"
     await fake_refresh_repo.save(jti, user_id, 3600)
     token = create_refresh_token(
@@ -262,22 +261,15 @@ async def test_get_user_from_token_deleted_user_raises(auth_service, test_settin
 
 @pytest.mark.asyncio
 async def test_get_user_from_token_expired_raises(auth_service, fake_user_repo, test_settings):
-    """Новый тест: Проверяет, что протухший Access-токен вызывает исключение."""
+    """Проверяет, что протухший Access-токен вызывает исключение."""
     user = UserFactory()
     await fake_user_repo.create(user)
 
-    # Фиксируем начальную точку времени
-    initial_time = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-
-    with time_machine.travel(initial_time):
-        token = create_access_token(
-            data={"sub": str(user.id)},
-            secret_key=test_settings.secret_key,
-            expires_delta=timedelta(minutes=15),  # Токен активен до 12:15
-            algorithm=test_settings.jwt_algorithm,
-        )
-
-    # Перемещаемся в будущее на 16 минут (время 12:16) — токен уже протух
-    with time_machine.travel(initial_time + timedelta(minutes=16)):
-        with pytest.raises(InvalidTokenException):
-            await auth_service.get_user_from_token(token)
+    now = int(time.time())
+    token = jwt.encode(
+        {"sub": str(user.id), "exp": now - 60, "iat": now - 120},
+        test_settings.secret_key,
+        algorithm=test_settings.jwt_algorithm,
+    )
+    with pytest.raises(InvalidTokenException):
+        await auth_service.get_user_from_token(token)
