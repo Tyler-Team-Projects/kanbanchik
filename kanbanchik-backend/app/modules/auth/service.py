@@ -91,7 +91,7 @@ class AuthService:
         # Декодируем refresh-токен
         try:
             payload = decode_token(refresh_token, self._settings.secret_key, self._settings.jwt_algorithm)
-        except ValueError as e:
+        except ValueError:
             raise InvalidTokenException()
 
         jti = payload.get("jti")
@@ -139,7 +139,7 @@ class AuthService:
     async def logout(self, refresh_token: str) -> None:
         try:
             payload = decode_token(refresh_token, self._settings.secret_key, self._settings.jwt_algorithm)
-        except ValueError as e:
+        except ValueError:
             raise InvalidTokenException()
 
         jti = payload.get("jti")
@@ -153,7 +153,7 @@ class AuthService:
         """Декодирует токен, загружает и возвращает пользователя."""
         try:
             payload = decode_token(token, self._settings.secret_key, self._settings.jwt_algorithm)
-        except ValueError as e:
+        except ValueError:
             raise InvalidTokenException()
 
         user_id_str = payload.get("sub")

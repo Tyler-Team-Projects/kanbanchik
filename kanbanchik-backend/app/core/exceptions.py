@@ -27,6 +27,7 @@ class BadRequestException(BaseDomainException):
 class UnauthorizedException(BaseDomainException):
     """401 Unauthorized."""
     status_code: int = 401
+    headers: Optional[dict[str, Any]] = {"WWW-Authenticate": "Bearer"}
 
 
 class ForbiddenException(BaseDomainException):

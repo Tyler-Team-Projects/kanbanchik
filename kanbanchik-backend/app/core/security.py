@@ -5,6 +5,7 @@ from argon2 import PasswordHasher
 from jose import ExpiredSignatureError, JWTError, jwt
 from uuid_extension import uuid7
 from app.core.config import settings
+from app.core.exceptions import InternalServerErrorException
 
 _hasher = PasswordHasher()
 
@@ -51,7 +52,7 @@ def create_access_token(
     Создаёт JWT access token.
     """
     if expires_delta is None:
-        raise ValueError("Для токена доступа обязательно требуется время жизни")
+        raise InternalServerErrorException("Для токена доступа обязательно требуется время жизни")
 
     now = datetime.now(timezone.utc)
     payload = data.copy()
@@ -72,9 +73,9 @@ def create_refresh_token(
     Создаёт JWT refresh token с уникальным идентификатором jti.
     """
     if expires_delta is None:
-        raise ValueError("Для токена обновления обязательно требуется время жизни")
+        raise InternalServerErrorException("Для токена обновления обязательно требуется время жизни")
     if "jti" not in data:
-        raise ValueError("Для refresh-токена обязательно поле 'jti'")
+        raise InternalServerErrorException("Для refresh-токена обязательно поле 'jti'")
     now = datetime.now(timezone.utc)
     payload = data.copy()
     payload.update({
