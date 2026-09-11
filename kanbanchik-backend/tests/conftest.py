@@ -1,73 +1,44 @@
 import pytest
-import asyncio
-from httpx import AsyncClient
+from contextvars import ContextVar
 from typing import AsyncGenerator
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
+from dotenv import load_dotenv
+load_dotenv(".env.test", override=True)
+
+from httpx import AsyncClient, ASGITransport
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    AsyncSession,
+    AsyncEngine,
+    AsyncConnection,
+)
+from redis.asyncio import Redis as AsyncRedis
 from dishka import Provider, Scope, provide, make_async_container
-from dishka.integrations.fastapi import setup_dishka, FastapiProvider
-from alembic.config import Config
-from alembic import command
+from dishka.integrations.fastapi import FastapiProvider
 
-from app.core.config import settings, Settings
-from app.main import app
-
+from app.main import create_app
 from app.modules.auth.provider import AuthProvider
 from app.modules.users.provider import UsersProvider
 from app.modules.boards.provider import BoardsProvider
 from app.modules.workspaces.provider import WorkspacesProvider
 from app.modules.lists.provider import ListsProvider
-from app.core.redis import RedisProvider
-
+from app.core.config import Settings, settings
 from app.api.deps import get_current_user
 from app.api.schemas import CurrentUser
-from uuid_extension import uuid7
+
+from tests.factories import UserFactory
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Обязательно для session-scope асинхронных фикстур."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+_test_connection: ContextVar[AsyncConnection | None] = ContextVar(
+    "_test_connection", default=None
+)
 
 
-@pytest.fixture(scope="session")
-async def setup_test_database():
-    """
-    1. Проверяет/создает чистую тестовую БД.
-    2. Запускает реальные миграции Alembic (гарантия корректности схемы).
-    """
-    sync_url = settings.TEST_DATABASE_URL.replace("+asyncpg", "")
-    base_url, db_name = sync_url.rsplit("/", 1)
-
-    import asyncpg
-    conn = await asyncpg.connect(base_url + "/postgres")
-    exists = await conn.fetchval(f"SELECT 1 FROM pg_database WHERE datname = '{db_name}'")
-    if not exists:
-        await conn.execute(f"CREATE DATABASE {db_name}")
-    await conn.close()
-
-    alembic_cfg = Config("alembic.ini")
-    alembic_cfg.set_main_option("sqlalchemy.url", settings.TEST_DATABASE_URL)
-
-    # Синхронный вызов alembic в отдельном потоке, так как alembic по умолчанию синхронен
-    await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
-
-    yield
-
-    await asyncio.to_thread(command.downgrade, alembic_cfg, "base")
-
-
-# Специальный тестовый провайдер для Dishka
 class TestDatabaseProvider(Provider):
-    """
-    Этот провайдер заменяет ваш оригинальный CoreProvider и DatabaseProvider в тестах.
-    Он подменяет Engine на тестовый и изолирует каждую сессию в транзакции.
-    """
+    """Подменяет боевой engine на тестовый и раздаёт session, привязанную к ContextVar."""
 
     def __init__(self, test_database_url: str):
         super().__init__()
-        # Создаем тестовый движок
         self.engine = create_async_engine(test_database_url, echo=False)
 
     @provide(scope=Scope.APP)
@@ -75,36 +46,53 @@ class TestDatabaseProvider(Provider):
         return settings
 
     @provide(scope=Scope.APP)
-    def get_engine(self) -> create_async_engine:
+    def get_engine(self) -> AsyncEngine:
         return self.engine
 
     @provide(scope=Scope.REQUEST)
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
-        """
-        На каждый запрос/тест открывается соединение,
-        запускается транзакция, а в конце — тотальный ROLLBACK.
-        """
-        async with self.engine.connect() as conn:
-            trans = await conn.begin()
+        conn = _test_connection.get()
+        if conn is None:
+            raise RuntimeError(
+                "Тестовое соединение не установлено. "
+                "Убедись, что тест зависит от фикстуры test_app (или db_transaction)."
+            )
+        session = AsyncSession(
+            bind=conn,
+            expire_on_commit=False,
+            join_transaction_mode="create_savepoint",
+        )
+        try:
+            yield session
+        finally:
+            await session.close()
 
-            async with AsyncSession(bind=conn, expire_on_commit=False) as session:
-                yield session
 
-            await trans.rollback()
+class TestRedisProvider(Provider):
+    @provide(scope=Scope.APP)
+    async def get_redis(self) -> AsyncGenerator[AsyncRedis, None]:
+        url = settings.test_redis_url or "redis://localhost:6380/0"
+        client = AsyncRedis.from_url(url, decode_responses=True)
+        try:
+            yield client
+        finally:
+            await client.aclose()
 
 
-@pytest.fixture(scope="function")
-async def test_container(setup_test_database):
+@pytest.fixture(scope="session")
+def test_db_provider():
+    return TestDatabaseProvider(settings.test_database_url)
+
+
+@pytest.fixture(scope="session")
+async def test_container(test_db_provider):
     """
-    Пересобирает контейнер Dishka для каждого теста, гарантируя,
-    что приложение FastAPI использует тестовый провайдер БД.
+    Один контейнер на всю сессию.
+    APP-scope ресурсы (engine, redis-клиент, Settings) создаются один раз.
     """
-    # Инициализируем наш тестовый провайдер с тестовым URL
-    test_db_provider = TestDatabaseProvider(settings.TEST_DATABASE_URL)
-
     container = make_async_container(
         test_db_provider,
-        RedisProvider(),
+        TestRedisProvider(),
         FastapiProvider(),
         UsersProvider(),
         WorkspacesProvider(),
@@ -112,46 +100,69 @@ async def test_container(setup_test_database):
         BoardsProvider(),
         ListsProvider(),
     )
-
-    # Намертво связываем этот контейнер с FastAPI приложением
-    setup_dishka(container, app)
-
     yield container
-
     await container.close()
-    # Закрываем пул соединений тестового движка
     await test_db_provider.engine.dispose()
 
 
-@pytest.fixture(scope="function")
-async def async_client(test_container):
+@pytest.fixture
+async def db_transaction(test_db_provider):
     """
-    Ваш клиент для выполнения HTTP-запросов к API.
-    Зависит от test_container, поэтому БД гарантированно будет чистой.
+    Открывает соединение и BEGIN.
+    Кладёт соединение в ContextVar, чтобы get_session внутри запросов
+    использовал его же.
+    В конце — ROLLBACK, всё стирается.
     """
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        yield client
-
-
-from app.api.deps import get_current_user
-from app.api.schemas import CurrentUser
-from uuid import uuid4
+    async with test_db_provider.engine.connect() as conn:
+        trans = await conn.begin()
+        token = _test_connection.set(conn)
+        try:
+            yield conn
+        finally:
+            _test_connection.reset(token)
+            await trans.rollback()
 
 
 @pytest.fixture
-def auth_client(async_client):
-    """
-    Возвращает клиент, который уже авторизован под фейковым пользователем.
-    """
-    fake_user = CurrentUser(
-        id=uuid7(),
-        email="test_user@kanbanchik.ru",
-        username="test_user"
+def test_app(test_container, db_transaction):
+    """Свежий app на каждый тест. Зависит от db_transaction, чтобы ContextVar был установлен."""
+    return create_app(test_container)
+
+
+@pytest.fixture
+async def async_client(test_app):
+    async with AsyncClient(
+        transport=ASGITransport(app=test_app),
+        base_url="http://test",
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+async def auth_client(test_app, async_client, db_transaction, _clear_redis):
+    session = AsyncSession(
+        bind=db_transaction,
+        expire_on_commit=False,
+        join_transaction_mode="create_savepoint",
     )
+    UserFactory._session = session
+    try:
+        user = await UserFactory.create(
+            email="test_user@kanbanchik.ru",
+            username="test_user",
+        )
+        fake_user = CurrentUser(id=user.id, email=user.email, username=user.username)
+        test_app.dependency_overrides[get_current_user] = lambda: fake_user
+        yield async_client
+        test_app.dependency_overrides.clear()
+    finally:
+        UserFactory._session = None
+        await session.close()
 
-    # Вот здесь FastAPI overrides уместен, так как get_current_user — это Depends
-    app.dependency_overrides[get_current_user] = lambda: fake_user
 
-    yield async_client
-
-    app.dependency_overrides.clear()
+@pytest.fixture()
+async def _clear_redis(test_container):
+    yield
+    async with test_container() as req:
+        redis = await req.get(AsyncRedis)
+        await redis.flushdb()

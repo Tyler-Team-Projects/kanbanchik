@@ -77,7 +77,7 @@ class FakeRefreshTokenRepository:
 # ---------- Фикстуры ----------
 @pytest.fixture
 def test_settings():
-    return Settings(
+    return Settings.model_construct(
         secret_key="test-secret-key",
         jwt_algorithm="HS256",
         access_token_expire_minutes=15,
@@ -105,11 +105,11 @@ def auth_service(fake_user_repo, fake_refresh_repo, test_settings):
 
 
 # ---------- Тесты ----------
-@pytest.mark.asyncio
+
 async def test_login_success_returns_tokens(auth_service, fake_user_repo, fake_refresh_repo, test_settings):
     password = "secure123"
     password_hash = get_password_hash(password)
-    user = UserFactory(password_hash=password_hash)
+    user = UserFactory.build(password_hash=password_hash)
     await fake_user_repo.create(user)
 
     tokens = await auth_service.login(user.email, password)
@@ -124,22 +124,22 @@ async def test_login_success_returns_tokens(auth_service, fake_user_repo, fake_r
     assert token_data.user_id == str(user.id)
 
 
-@pytest.mark.asyncio
+
 async def test_login_wrong_password_raises_invalid_credentials(auth_service, fake_user_repo):
-    user = UserFactory(password_hash=get_password_hash("correct"))
+    user = UserFactory.build(password_hash=get_password_hash("correct"))
     await fake_user_repo.create(user)
 
     with pytest.raises(InvalidCredentialsException):
         await auth_service.login(user.email, "wrong")
 
 
-@pytest.mark.asyncio
+
 async def test_login_nonexistent_user_raises_invalid_credentials(auth_service):
     with pytest.raises(InvalidCredentialsException):
         await auth_service.login("unknown@example.com", "pass")
 
 
-@pytest.mark.asyncio
+
 async def test_refresh_success(auth_service, fake_refresh_repo, test_settings):
     user_id = str(uuid7())
     jti = "test-jti-1"
@@ -166,13 +166,13 @@ async def test_refresh_success(auth_service, fake_refresh_repo, test_settings):
     assert new_data is not None
 
 
-@pytest.mark.asyncio
+
 async def test_refresh_with_invalid_token_raises(auth_service):
     with pytest.raises(InvalidTokenException):
         await auth_service.refresh("invalid-token")
 
 
-@pytest.mark.asyncio
+
 async def test_refresh_with_missing_jti_raises(auth_service, test_settings):
     payload = {"sub": "some-user"}
     token = jwt.encode(payload, test_settings.secret_key, algorithm=test_settings.jwt_algorithm)
@@ -180,7 +180,7 @@ async def test_refresh_with_missing_jti_raises(auth_service, test_settings):
         await auth_service.refresh(token)
 
 
-@pytest.mark.asyncio
+
 async def test_refresh_with_non_existing_jti_raises(auth_service, test_settings):
     jti = "non-existing"
     token = create_refresh_token(
@@ -193,7 +193,7 @@ async def test_refresh_with_non_existing_jti_raises(auth_service, test_settings)
         await auth_service.refresh(token)
 
 
-@pytest.mark.asyncio
+
 async def test_logout_deletes_token(auth_service, fake_refresh_repo, test_settings):
     user_id = str(uuid7())
     jti = "logout-jti"
@@ -210,15 +210,15 @@ async def test_logout_deletes_token(auth_service, fake_refresh_repo, test_settin
     assert await fake_refresh_repo.get(jti) is None
 
 
-@pytest.mark.asyncio
+
 async def test_logout_invalid_token_raises(auth_service):
     with pytest.raises(InvalidTokenException):
         await auth_service.logout("invalid")
 
 
-@pytest.mark.asyncio
+
 async def test_get_user_from_token_success(auth_service, fake_user_repo, test_settings):
-    user = UserFactory()
+    user = UserFactory.build()
     await fake_user_repo.create(user)
     token = create_access_token(
         data={"sub": str(user.id)},
@@ -232,9 +232,9 @@ async def test_get_user_from_token_success(auth_service, fake_user_repo, test_se
     assert retrieved.email == user.email
 
 
-@pytest.mark.asyncio
+
 async def test_get_user_from_token_inactive_user_raises(auth_service, fake_user_repo, test_settings):
-    user = UserFactory(is_active=False)
+    user = UserFactory.build(is_active=False)
     await fake_user_repo.create(user)
     token = create_access_token(
         data={"sub": str(user.id)},
@@ -246,7 +246,7 @@ async def test_get_user_from_token_inactive_user_raises(auth_service, fake_user_
         await auth_service.get_user_from_token(token)
 
 
-@pytest.mark.asyncio
+
 async def test_get_user_from_token_deleted_user_raises(auth_service, test_settings):
     non_existent_uuid = str(uuid7())
     token = create_access_token(
@@ -259,10 +259,10 @@ async def test_get_user_from_token_deleted_user_raises(auth_service, test_settin
         await auth_service.get_user_from_token(token)
 
 
-@pytest.mark.asyncio
+
 async def test_get_user_from_token_expired_raises(auth_service, fake_user_repo, test_settings):
     """Проверяет, что протухший Access-токен вызывает исключение."""
-    user = UserFactory()
+    user = UserFactory.build()
     await fake_user_repo.create(user)
 
     now = int(time.time())

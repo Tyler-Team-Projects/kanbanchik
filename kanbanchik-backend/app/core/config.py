@@ -20,7 +20,8 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     # Tests
-    test_database_url: str
+    test_redis_url: str | None = None
+    test_database_url: str | None = None
 
 
     model_config = SettingsConfigDict(

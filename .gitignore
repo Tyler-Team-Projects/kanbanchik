@@ -121,7 +121,7 @@ kanbanchik-backend/.env
 .env.*.local
 .env.production
 .env.staging
-.env.test
+kanbanchik-backend/.env.test
 
 .venv
 env/

@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: kanban_postgres_test_db
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: passfortest
+      POSTGRES_DB: kanbanchik_test
+    ports:
+      - "5434:5432"
+    tmpfs:
+      - /var/lib/postgresql/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d kanbanchik_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: no
+
+  redis:
+    image: redis:7-alpine
+    container_name: kanban_redis_test
+    ports:
+      - "6380:6379"
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: no
