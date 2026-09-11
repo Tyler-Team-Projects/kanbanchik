@@ -10,7 +10,7 @@ from app.core.redis import init_redis, close_redis
 from app.db.base import engine
 from app.core.di import container
 from app.api.v1 import router as api_v1_router
-from app.core.exceptions import BaseDomainException, InternalServerErrorException
+from app.core.exceptions import BaseDomainException
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -68,17 +68,6 @@ async def health() -> dict:
 async def ping() -> dict:
     return {"pong": True}
 
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(
-        "app.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-    )
-
 def create_error_response(exc: BaseDomainException) -> JSONResponse:
     """Создание JSON-ответ для доменного исключения."""
     return JSONResponse(
@@ -121,4 +110,15 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "Внутренняя ошибка сервера"},
+    )
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
     )
