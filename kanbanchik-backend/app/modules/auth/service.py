@@ -7,7 +7,6 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
-    get_password_hash,
     verify_password,
 )
 from app.modules.auth.repository import IRefreshTokenRepository
@@ -89,10 +88,7 @@ class AuthService:
 
     async def refresh(self, refresh_token: str) -> dict[str, str]:
         # Декодируем refresh-токен
-        try:
-            payload = decode_token(refresh_token, self._settings.secret_key, self._settings.jwt_algorithm)
-        except ValueError:
-            raise InvalidTokenException()
+        payload = decode_token(refresh_token, self._settings.secret_key, self._settings.jwt_algorithm)
 
         jti = payload.get("jti")
         user_id = payload.get("sub")
@@ -137,10 +133,7 @@ class AuthService:
         return {"access_token": new_access, "refresh_token": new_refresh}
 
     async def logout(self, refresh_token: str) -> None:
-        try:
-            payload = decode_token(refresh_token, self._settings.secret_key, self._settings.jwt_algorithm)
-        except ValueError:
-            raise InvalidTokenException()
+        payload = decode_token(refresh_token, self._settings.secret_key, self._settings.jwt_algorithm)
 
         jti = payload.get("jti")
         if not jti:
@@ -151,10 +144,7 @@ class AuthService:
 
     async def get_user_from_token(self, token: str) -> User:
         """Декодирует токен, загружает и возвращает пользователя."""
-        try:
-            payload = decode_token(token, self._settings.secret_key, self._settings.jwt_algorithm)
-        except ValueError:
-            raise InvalidTokenException()
+        payload = decode_token(token, self._settings.secret_key, self._settings.jwt_algorithm)
 
         user_id_str = payload.get("sub")
         if not user_id_str:
@@ -167,7 +157,7 @@ class AuthService:
 
         user = await self._user_repo.get_by_id(user_id)
         if not user:
-            raise UserNotFoundException()
+            raise UserNotFoundException(user_id=str(user_id))
         if not user.is_active:
             raise UserInactiveException()
 

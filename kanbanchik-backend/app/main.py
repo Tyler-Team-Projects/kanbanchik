@@ -10,7 +10,7 @@ from app.core.redis import init_redis, close_redis
 from app.db.base import engine
 from app.core.di import container
 from app.api.v1 import router as api_v1_router
-from app.core.exceptions import BaseDomainException, InternalServerErrorException
+from app.core.exceptions import BaseDomainException
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
