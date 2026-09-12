@@ -1,10 +1,11 @@
-import json
 from typing import Protocol
 from datetime import datetime, timezone, timedelta
 
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 
 from app.modules.auth.schemas import RefreshTokenData
+from app.core.exceptions import InternalServerErrorException
 
 # Константа для префикса ключей в Redis
 REFRESH_TOKEN_KEY_PREFIX = "refresh_token:"
@@ -47,11 +48,17 @@ class RedisRefreshTokenRepository:
         )
         key = self._make_key(jti)
         # Сохраняем как JSON-строку с TTL
-        await self._redis.setex(key, ttl_seconds, data.model_dump_json())
+        try:
+            await self._redis.setex(key, ttl_seconds, data.model_dump_json())
+        except RedisError:
+            raise InternalServerErrorException("Ошибка при сохранении refresh-токена")
 
     async def get(self, jti: str) -> RefreshTokenData | None:
         key = self._make_key(jti)
-        raw = await self._redis.get(key)
+        try:
+            raw = await self._redis.get(key)
+        except RedisError:
+            raise InternalServerErrorException("Ошибка при получении refresh-токена")
         if raw is None:
             return None
         # Парсим JSON в Pydantic-модель
@@ -59,11 +66,14 @@ class RedisRefreshTokenRepository:
 
     async def delete(self, jti: str) -> None:
         key = self._make_key(jti)
-        await self._redis.delete(key)
+        try:
+            await self._redis.delete(key)
+        except RedisError:
+            raise InternalServerErrorException("Ошибка при удалении refresh-токена")
 
     async def exists(self, jti: str) -> bool:
         key = self._make_key(jti)
-        return await self._redis.exists(key) == 1
-
-
-# в будущем обязательно добавить отлов ошибок и исключений
+        try:
+            return await self._redis.exists(key) == 1
+        except RedisError:
+            raise InternalServerErrorException("Ошибка при проверке refresh-токена")
