@@ -1,36 +1,19 @@
+from typing import AsyncIterable
+
 from redis.asyncio import Redis
 from dishka import Provider, Scope, provide
 
 from app.core.config import settings
 
-_redis_client: Redis | None = None
-
-
-async def init_redis() -> Redis:
-    """Инициализация Redis-клиента."""
-    global _redis_client
-    _redis_client = Redis.from_url(
-        settings.redis_url,
-        decode_responses=True,
-    )
-    await _redis_client.ping()
-    return _redis_client
-
-
-async def close_redis() -> None:
-    """Закрытие Redis-клиента."""
-    global _redis_client
-    if _redis_client:
-        await _redis_client.close()
-        _redis_client = None
-
 
 class RedisProvider(Provider):
-    """DI-провайдер для redis-клиента"""
+    """DI-провайдер для redis-клиента."""
 
     @provide(scope=Scope.APP)
-    def get_redis(self) -> Redis:
-        """Возвращает глобальный экземпляр Redis."""
-        if _redis_client is None:
-            raise RuntimeError("Redis не запущен")
-        return _redis_client
+    async def get_redis(self) -> AsyncIterable[Redis]:
+        client = Redis.from_url(settings.redis_url, decode_responses=True)
+        try:
+            await client.ping()
+            yield client
+        finally:
+            await client.aclose()
