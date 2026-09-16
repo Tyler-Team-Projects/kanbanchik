@@ -1,10 +1,14 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 from argon2 import PasswordHasher
 from jose import ExpiredSignatureError, JWTError, jwt
 from uuid_extension import uuid7
 from app.core.config import settings
+from app.core.exceptions import (
+    InternalServerErrorException,
+    InvalidTokenException,
+    TokenExpiredException,
+)
 
 _hasher = PasswordHasher()
 
@@ -26,21 +30,6 @@ def get_password_hash(password: str) -> str:
     return _hasher.hash(password)
 
 
-def _ensure_jti(data: dict) -> dict:
-    """
-    Гарантирует наличие поля 'jti' в payload. Если отсутствует — генерирует uuid7.
-
-    Args:
-        data: Словарь с данными для токена.
-
-    Returns:
-        Словарь с гарантированным ключом 'jti'.
-    """
-    if "jti" not in data:
-        data["jti"] = str(uuid7())
-    return data
-
-
 def create_access_token(
     data: dict,
     secret_key: str,
@@ -51,7 +40,7 @@ def create_access_token(
     Создаёт JWT access token.
     """
     if expires_delta is None:
-        raise ValueError("Для токена доступа обязательно требуется время жизни")
+        raise InternalServerErrorException("Для токена доступа обязательно требуется время жизни")
 
     now = datetime.now(timezone.utc)
     payload = data.copy()
@@ -72,9 +61,9 @@ def create_refresh_token(
     Создаёт JWT refresh token с уникальным идентификатором jti.
     """
     if expires_delta is None:
-        raise ValueError("Для токена обновления обязательно требуется время жизни")
+        raise InternalServerErrorException("Для токена обновления обязательно требуется время жизни")
     if "jti" not in data:
-        raise ValueError("Для refresh-токена обязательно поле 'jti'")
+        raise InternalServerErrorException("Для refresh-токена обязательно поле 'jti'")
     now = datetime.now(timezone.utc)
     payload = data.copy()
     payload.update({
@@ -92,6 +81,6 @@ def decode_token(token: str, secret_key: str, algorithm: str = settings.jwt_algo
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
         return payload
     except ExpiredSignatureError:
-        raise ValueError("Время жизни токена истекло")
-    except JWTError as e:
-        raise ValueError(f"Неверный токен: {str(e)}")
+        raise TokenExpiredException()
+    except JWTError:
+        raise InvalidTokenException()
