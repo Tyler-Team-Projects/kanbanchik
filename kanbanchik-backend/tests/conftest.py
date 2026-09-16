@@ -7,10 +7,7 @@ load_dotenv(".env.test", override=True)
 
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import (
-    create_async_engine,
-    AsyncSession,
-    AsyncEngine,
-    AsyncConnection,
+    create_async_engine, AsyncSession, AsyncEngine, AsyncConnection,
 )
 from redis.asyncio import Redis as AsyncRedis
 from dishka import Provider, Scope, provide, make_async_container
@@ -23,10 +20,12 @@ from app.modules.boards.provider import BoardsProvider
 from app.modules.workspaces.provider import WorkspacesProvider
 from app.modules.lists.provider import ListsProvider
 from app.core.config import Settings, settings
+from app.core.security import get_password_hash
 from app.api.deps import get_current_user
 from app.api.schemas import CurrentUser
 
 from tests.factories import UserFactory
+from tests.constants import TEST_PASSWORD
 
 
 _test_connection: ContextVar[AsyncConnection | None] = ContextVar(
@@ -139,7 +138,11 @@ async def async_client(test_app):
 
 
 @pytest.fixture
-async def auth_client(test_app, async_client, db_transaction, _clear_redis):
+async def seeded_user(db_transaction):
+    """
+    Кладёт в тестовую БД пользователя с известным email/username/паролем.
+    Использует ту же транзакцию, что и get_session внутри запросов (через ContextVar).
+    """
     session = AsyncSession(
         bind=db_transaction,
         expire_on_commit=False,
@@ -148,17 +151,32 @@ async def auth_client(test_app, async_client, db_transaction, _clear_redis):
     UserFactory._session = session
     try:
         user = await UserFactory.create(
-            email="test_user@kanbanchik.ru",
-            username="test_user",
+            email="integration@kanbanchik.ru",
+            username="integration_user",
+            password_hash=get_password_hash(TEST_PASSWORD),
         )
-        fake_user = CurrentUser(id=user.id, email=user.email, username=user.username)
-        test_app.dependency_overrides[get_current_user] = lambda: fake_user
-        yield async_client
-        test_app.dependency_overrides.clear()
+        yield user
     finally:
         UserFactory._session = None
         await session.close()
 
+
+@pytest.fixture
+async def client_with_fake_user(seeded_user, test_app, async_client, _clear_redis):
+    """
+    Клиент с подменённым get_current_user — «уже залогиненный» пользователь.
+    Подменяет DI, реальный JWT не проверяется. Для e2e-тестов auth не использовать.
+    """
+    fake_user = CurrentUser(
+        id=seeded_user.id,
+        email=seeded_user.email,
+        username=seeded_user.username,
+    )
+    test_app.dependency_overrides[get_current_user] = lambda: fake_user
+    try:
+        yield async_client
+    finally:
+        test_app.dependency_overrides.clear()
 
 @pytest.fixture()
 async def _clear_redis(test_container):

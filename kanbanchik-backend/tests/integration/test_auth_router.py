@@ -1,34 +1,6 @@
-import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from tests.factories import UserFactory
-
-
-TEST_PASSWORD = "test_password"
-
-
-@pytest.fixture
-async def seeded_user(db_transaction):
-    """
-    Кладёт в тестовую БД пользователя с известным email/username/паролем.
-    Использует ту же транзакцию, что и get_session внутри запросов (через ContextVar).
-    """
-    session = AsyncSession(
-        bind=db_transaction,
-        expire_on_commit=False,
-        join_transaction_mode="create_savepoint",
-    )
-    UserFactory._session = session
-    try:
-        user = await UserFactory.create(
-            email="integration@kanbanchik.ru",
-            username="integration_user",
-        )
-        yield user
-    finally:
-        UserFactory._session = None
-        await session.close()
+from tests.constants import TEST_PASSWORD
 
 
 class TestAuthFlow:
@@ -59,7 +31,7 @@ class TestAuthFlow:
     async def test_login_without_password(
         self, async_client: AsyncClient, seeded_user, _clear_redis
     ):
-        """Неверный пароль → 401 с понятным сообщением."""
+        """Пустой пароль → 401"""
         response = await async_client.post(
             "/api/v1/auth/login",
             json={"email_or_username": seeded_user.email, "password": ""},
@@ -68,7 +40,7 @@ class TestAuthFlow:
         assert "detail" in response.json()
 
     async def test_login_for_unregistered_user(
-        self, async_client: AsyncClient, seeded_user, _clear_redis
+        self, async_client: AsyncClient, _clear_redis
     ):
         """Неверный логин/почта или пароль → 401 с понятным сообщением."""
         response = await async_client.post(
