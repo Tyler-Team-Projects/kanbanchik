@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tests.factories import UserFactory
 
 
-TEST_PASSWORD = "test_password"  # именно этот пароль хешируется в UserFactory
+TEST_PASSWORD = "test_password"
 
 
 @pytest.fixture
@@ -56,6 +56,28 @@ class TestAuthFlow:
         assert response.status_code == 401
         assert "detail" in response.json()
 
+    async def test_login_without_password(
+        self, async_client: AsyncClient, seeded_user, _clear_redis
+    ):
+        """Неверный пароль → 401 с понятным сообщением."""
+        response = await async_client.post(
+            "/api/v1/auth/login",
+            json={"email_or_username": seeded_user.email, "password": ""},
+        )
+        assert response.status_code == 401
+        assert "detail" in response.json()
+
+    async def test_login_for_unregistered_user(
+        self, async_client: AsyncClient, seeded_user, _clear_redis
+    ):
+        """Неверный логин/почта или пароль → 401 с понятным сообщением."""
+        response = await async_client.post(
+            "/api/v1/auth/login",
+            json={"email_or_username": "integration2@kanbanchik.ru", "password": TEST_PASSWORD},
+        )
+        assert response.status_code == 401
+        assert "detail" in response.json()
+
     async def test_full_auth_cycle(
         self, async_client: AsyncClient, seeded_user, _clear_redis
     ):
@@ -99,26 +121,41 @@ class TestAuthFlow:
         assert new_tokens["refresh_token"] != refresh_1
         refresh_2 = new_tokens["refresh_token"]
 
-        # --- 4. Старый refresh-токен инвалидирован (ротация) ---
+        # --- 4. Access: новый токен работает ---
+        access_2 = new_tokens["access_token"]
+        me_after_refresh = await async_client.get(
+            "/api/v1/users/me",
+            headers={"Authorization": f"Bearer {access_2}"},
+        )
+        assert me_after_refresh.status_code == 200
+
+        # --- 5. Старый refresh-токен инвалидирован (ротация) ---
         replay_resp = await async_client.post(
             "/api/v1/auth/refresh",
             json={"refresh_token": refresh_1},
         )
         assert replay_resp.status_code == 401, replay_resp.text
 
-        # --- 5. Logout ---
+        # --- 6. Logout ---
         logout_resp = await async_client.post(
             "/api/v1/auth/logout",
             json={"refresh_token": refresh_2},
         )
         assert logout_resp.status_code == 204
 
-        # --- 6. После logout новый refresh-токен тоже не работает ---
+        # --- 7. После logout новый refresh-токен тоже не работает ---
         after_logout = await async_client.post(
             "/api/v1/auth/refresh",
             json={"refresh_token": refresh_2},
         )
         assert after_logout.status_code == 401, after_logout.text
+
+        # --- 8. Access stateless: после logout он ещё валиден до exp ---
+        me_after_logout = await async_client.get(
+            "/api/v1/users/me",
+            headers={"Authorization": f"Bearer {access_2}"},
+        )
+        assert me_after_logout.status_code == 200
 
     async def test_refresh_with_garbage_token(
         self, async_client: AsyncClient, _clear_redis
