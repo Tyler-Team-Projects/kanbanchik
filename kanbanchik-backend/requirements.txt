@@ -18,6 +18,7 @@ email-validator==2.3.0
 factory_boy==3.3.3
 Faker==40.38.0
 fastapi==0.141.1
+flake8==7.5.0
 greenlet==3.5.5
 h11==0.16.0
 hiredis==3.4.1
@@ -28,15 +29,18 @@ idna==3.18
 iniconfig==2.3.0
 Mako==1.4.1
 MarkupSafe==3.0.3
+mccabe==0.7.0
 packaging==26.3
 passlib==1.7.4
 pluggy==1.6.0
 psycopg2-binary==2.9.12
 pyasn1==0.6.4
+pycodestyle==2.15.0
 pycparser==3.0
 pydantic==2.13.4
 pydantic-settings==2.15.0
 pydantic_core==2.46.4
+pyflakes==4.1.0
 Pygments==2.21.0
 pytest==9.1.1
 pytest-asyncio==1.4.0
@@ -48,6 +52,7 @@ rsa==4.9.1
 six==1.17.0
 SQLAlchemy==2.0.52
 starlette==1.6.0
+time-machine==3.5.0
 typing-inspection==0.4.4
 typing_extensions==4.16.0
 tzdata==2026.3
@@ -56,4 +61,3 @@ uvicorn==0.52.3
 uvloop==0.22.1; sys_platform != 'win32'
 watchfiles==1.2.0
 websockets==17.0.1
-time-machine==3.5.0
